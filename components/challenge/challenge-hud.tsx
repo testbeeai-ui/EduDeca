@@ -2,7 +2,7 @@
 
 import { Clock, Flame, LogOut, Zap } from "lucide-react";
 
-import { formatChallengeClock } from "@/lib/challenge/spec";
+import { challengeSessionDurationSec, formatChallengeClock } from "@/lib/challenge/spec";
 import type { EduBlastDotState } from "@/lib/challenge/meta";
 import { cn } from "@/lib/utils";
 
@@ -44,7 +44,8 @@ export function ChallengeHud({
 }: ChallengeHudProps) {
   const strikeCount = Math.min(maxStrikes, strikes);
   const urgent = sessionLeft <= 60;
-  const sessionPct = Math.max(0, Math.min(100, (sessionLeft / 300) * 100));
+  const sessionTotalSec = challengeSessionDurationSec();
+  const sessionPct = Math.max(0, Math.min(100, (sessionLeft / sessionTotalSec) * 100));
 
   return (
     <header className="mb-3 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-[#121820]/95 shadow-lg shadow-black/20 sm:mb-4 sm:rounded-2xl">

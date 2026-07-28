@@ -61,8 +61,7 @@ export function AppShell({ children }: AppShellProps) {
             <main
               data-lenis-prevent
               className={cn(
-                "min-h-0 flex-1 overscroll-contain px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8",
-                isLevelsPage ? "overflow-hidden" : "overflow-y-auto",
+                "min-h-0 flex-1 overscroll-contain px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8 overflow-y-auto",
                 !hasHydrated && "opacity-0"
               )}
             >
@@ -75,3 +74,4 @@ export function AppShell({ children }: AppShellProps) {
     </AuthGate>
   );
 }
+

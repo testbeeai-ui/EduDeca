@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import type { ChallengeSummaryReason } from "@/lib/types";
-import { CHALLENGE_SPEC } from "@/lib/challenge/spec";
+import { challengeMaxStrikes } from "@/lib/challenge/spec";
 
 interface ChallengeSummaryProps {
   reason: ChallengeSummaryReason;
@@ -21,23 +21,24 @@ function summaryCopy(
   total: number,
   levelAtStart: number
 ): { title: string; description: string } {
+  const maxStrikes = challengeMaxStrikes(levelAtStart);
   switch (reason) {
     case "won":
       if (levelAtStart === 3) {
         return {
           title: "Free zone complete!",
           description:
-            "You cleared Level 3 with 80%+ accuracy. Unlock proctored rounds to continue to Level 4.",
+            "You cleared Level 3 without burning out your strikes. Unlock proctored rounds to continue to Level 4.",
         };
       }
       return {
         title: "Level passed!",
-        description: `You scored ${correct}/${total}. You're now Level ${levelAtStart + 1}.`,
+        description: `You scored ${correct}/${total} and stayed under ${maxStrikes} strikes. You're now Level ${levelAtStart + 1}.`,
       };
     case "strikes":
       return {
-        title: "3 strikes — challenge ended",
-        description: "Three incorrect answers ended your run. Try again tomorrow.",
+        title: `${maxStrikes} strikes — challenge ended`,
+        description: `You hit ${maxStrikes} wrong or unanswered questions. Try again tomorrow.`,
       };
     case "time":
       return {
@@ -46,8 +47,8 @@ function summaryCopy(
       };
     case "below_threshold":
       return {
-        title: "Below pass threshold",
-        description: `Need ${CHALLENGE_SPEC.minCorrect}/${total} correct to advance. You got ${correct}.`,
+        title: "Challenge failed",
+        description: `Stay under ${maxStrikes} strikes and finish all questions to advance. You got ${correct}/${total}.`,
       };
     case "quit":
       return {

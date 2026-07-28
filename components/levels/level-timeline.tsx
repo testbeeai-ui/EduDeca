@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Trophy } from "lucide-react";
+import { Trophy, Lock, Check } from "lucide-react";
 
 import type { LevelNode } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -42,12 +42,13 @@ function LevelNodeCard({ level, index }: LevelNodeCardProps) {
   const { title, subtitle } = getLevelDisplayData(level);
 
   const circleClass = cn(
-    "flex size-12 shrink-0 items-center justify-center rounded-full text-base font-bold transition-all duration-300 relative z-10",
-    isCompleted && "bg-emerald-500 text-slate-950 border-2 border-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.4)]",
-    isCurrent && "bg-amber-500 text-slate-950 border-2 border-amber-400 ring-4 ring-amber-500/20 shadow-[0_0_20px_rgba(245,158,11,0.6)] animate-pulse",
-    isLocked && level.tier === "free" && "bg-slate-950 text-emerald-400/60 border-2 border-emerald-500/50 group-hover:border-emerald-400 group-hover:text-emerald-300 transition-all",
-    isLocked && level.tier === "proctored" && "bg-slate-950 text-violet-400/60 border-2 border-violet-500/50 group-hover:border-violet-400 group-hover:text-violet-300 transition-all",
-    isLocked && level.tier === "finals" && "bg-slate-950 text-rose-400/60 border-2 border-rose-500/50 group-hover:border-rose-400 group-hover:text-rose-300 transition-all"
+    "flex size-12 shrink-0 items-center justify-center rounded-full text-base font-extrabold transition-all duration-300 relative z-10 shadow-lg",
+    isCompleted && "bg-gradient-to-br from-emerald-400 to-teal-500 text-slate-950 border-2 border-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.5)]",
+    isCurrent && "bg-gradient-to-br from-amber-400 to-amber-500 text-slate-950 border-2 border-amber-200 ring-4 ring-amber-500/30 shadow-[0_0_20px_rgba(245,158,11,0.6)]",
+
+    isLocked && level.tier === "free" && "bg-slate-900 text-emerald-400/80 border-2 border-emerald-500/40 group-hover:border-emerald-400 group-hover:text-emerald-300",
+    isLocked && level.tier === "proctored" && "bg-slate-900 text-violet-400/80 border-2 border-violet-500/40 group-hover:border-violet-400 group-hover:text-violet-300",
+    isLocked && level.tier === "finals" && "bg-slate-900 text-rose-400/80 border-2 border-rose-500/40 group-hover:border-rose-400 group-hover:text-rose-300"
   );
 
   return (
@@ -56,38 +57,47 @@ function LevelNodeCard({ level, index }: LevelNodeCardProps) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05, duration: 0.35 }}
       className={cn(
-        "flex items-center gap-4 w-full py-3 px-3 rounded-2xl transition-all duration-200 group relative",
-        isCurrent ? "bg-amber-500/5" : "hover:bg-white/5",
-        isLocked && "opacity-60 hover:opacity-100"
+        "flex items-center gap-4 w-full py-3 px-3.5 rounded-2xl transition-all duration-300 group relative border border-transparent",
+        isCurrent ? "bg-amber-500/10 border-amber-500/30 shadow-lg shadow-amber-500/5" : "hover:bg-white/5 hover:border-white/10",
+        isLocked && "opacity-75 hover:opacity-100"
       )}
     >
       <div className={circleClass}>
-        {level.number}
+        {isCompleted ? (
+          <Check className="size-5 stroke-[3]" />
+        ) : (
+          level.number
+        )}
       </div>
 
       <div className="flex-grow min-w-0">
-        <p className={cn(
-          "font-semibold text-sm sm:text-base transition-colors",
-          isCompleted && "text-emerald-400",
-          isCurrent && "text-amber-400 font-bold",
-          isLocked && "text-slate-200 group-hover:text-white"
-        )}>
-          Level {level.number} — {title}
-        </p>
+        <div className="flex items-center gap-2">
+          <p className={cn(
+            "font-bold text-sm sm:text-base transition-colors tracking-tight",
+            isCompleted && "text-emerald-400",
+            isCurrent && "text-amber-400 font-extrabold",
+            isLocked && "text-slate-100 group-hover:text-white"
+          )}>
+            Level {level.number} — {title}
+          </p>
+          {isLocked && (
+            <Lock className="size-3.5 text-muted-foreground/60 shrink-0" />
+          )}
+        </div>
         <p className="text-xs sm:text-sm text-slate-400 mt-0.5 truncate transition-colors group-hover:text-slate-300">
           {subtitle}
         </p>
       </div>
 
       {level.price && (
-        <span className="text-xs font-semibold text-violet-400 bg-violet-400/10 px-2.5 py-1 rounded-full shrink-0">
+        <span className="text-xs font-mono font-bold text-violet-300 bg-violet-500/15 border border-violet-500/30 px-2.5 py-1 rounded-full shrink-0 shadow-sm">
           {level.price}
         </span>
       )}
 
       {level.number === 7 && (
-        <div className="absolute right-[-40px] top-1/2 -translate-y-1/2 text-level-amber z-20">
-          <Trophy className="size-5" />
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-amber-400 z-20 animate-bounce">
+          <Trophy className="size-5 text-amber-400 fill-amber-400/20" />
         </div>
       )}
     </motion.div>
@@ -109,7 +119,7 @@ export function LevelTimeline({ levels }: LevelTimelineProps) {
         {/* Left Column (Odd levels) */}
         <div className="space-y-6 relative">
           <div
-            className="absolute top-4 bottom-4 w-0.5 bg-gradient-to-b from-emerald-500/40 via-violet-500/40 to-rose-500/40 left-[36px] z-0 pointer-events-none"
+            className="absolute top-4 bottom-4 w-1 bg-gradient-to-b from-emerald-400 via-violet-500 to-rose-500 left-[35px] z-0 pointer-events-none rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)]"
             aria-hidden
           />
           {oddLevels.map((level, index) => (
@@ -120,7 +130,7 @@ export function LevelTimeline({ levels }: LevelTimelineProps) {
         {/* Right Column (Even levels) */}
         <div className="space-y-6 relative">
           <div
-            className="absolute top-4 bottom-4 w-0.5 bg-gradient-to-b from-emerald-500/40 via-violet-500/40 to-rose-500/40 left-[36px] z-0 pointer-events-none"
+            className="absolute top-4 bottom-4 w-1 bg-gradient-to-b from-emerald-400 via-violet-500 to-rose-500 left-[35px] z-0 pointer-events-none rounded-full shadow-[0_0_10px_rgba(139,92,246,0.5)]"
             aria-hidden
           />
           {evenLevels.map((level, index) => (
@@ -133,7 +143,7 @@ export function LevelTimeline({ levels }: LevelTimelineProps) {
       <div className="relative md:hidden space-y-6">
         {/* Mobile Single Timeline Line */}
         <div
-          className="absolute top-4 bottom-4 w-0.5 bg-gradient-to-b from-emerald-500/40 via-violet-500/40 to-rose-500/40 left-[36px] z-0 pointer-events-none"
+          className="absolute top-4 bottom-4 w-1 bg-gradient-to-b from-emerald-400 via-violet-500 to-rose-500 left-[35px] z-0 pointer-events-none rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)]"
           aria-hidden
         />
         
@@ -144,3 +154,4 @@ export function LevelTimeline({ levels }: LevelTimelineProps) {
     </div>
   );
 }
+

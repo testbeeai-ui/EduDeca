@@ -67,14 +67,15 @@ export default function RewardsPage() {
         <Button
           asChild
           size="lg"
-          className="h-14 w-full rounded-2xl bg-level-violet text-white cta-breathe hover:bg-level-violet/90"
+          className="h-14 w-full rounded-2xl bg-gradient-to-r from-violet-600 via-indigo-600 to-purple-600 font-extrabold text-white shadow-xl shadow-indigo-500/20 hover:brightness-110 active:scale-[0.99] transition-all"
         >
-          <Link href="https://edublast.in" target="_blank" rel="noopener noreferrer">
+          <Link href="https://edublast.in" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2">
             Continue to Edublast.in
-            <ArrowRight className="size-4" />
+            <ArrowRight className="size-5 stroke-[2.5]" />
           </Link>
         </Button>
       </MotionFade>
     </div>
   );
 }
+

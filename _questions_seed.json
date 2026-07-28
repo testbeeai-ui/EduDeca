@@ -1,0 +1,542 @@
+[
+  {
+    "num": 1,
+    "discipline": "Physics",
+    "subject_id": "phy",
+    "stem": "Which instrument is used to measure electric current?",
+    "options": [
+      "Voltmeter",
+      "Ammeter",
+      "Barometer",
+      "Thermometer"
+    ],
+    "level": 1,
+    "correct_index": 1,
+    "explanation": null,
+    "difficulty_rating": 3,
+    "sort_order": 1,
+    "id": "l1-phy"
+  },
+  {
+    "num": 2,
+    "discipline": "Chemistry",
+    "subject_id": "che",
+    "stem": "Which of the following is a compound?",
+    "options": [
+      "Oxygen",
+      "Iron",
+      "Water",
+      "Nitrogen"
+    ],
+    "level": 1,
+    "correct_index": 2,
+    "explanation": null,
+    "difficulty_rating": 3,
+    "sort_order": 2,
+    "id": "l1-che"
+  },
+  {
+    "num": 3,
+    "discipline": "Mathematics",
+    "subject_id": "mat",
+    "stem": "What is the value of 8²?",
+    "options": [
+      "16",
+      "32",
+      "64",
+      "80"
+    ],
+    "level": 1,
+    "correct_index": 2,
+    "explanation": null,
+    "difficulty_rating": 3,
+    "sort_order": 3,
+    "id": "l1-mat"
+  },
+  {
+    "num": 4,
+    "discipline": "Biology",
+    "subject_id": "bio",
+    "stem": "Which part of a plant mainly absorbs water from the soil?",
+    "options": [
+      "Flower",
+      "Leaf",
+      "Stem",
+      "Root"
+    ],
+    "level": 1,
+    "correct_index": 3,
+    "explanation": null,
+    "difficulty_rating": 3,
+    "sort_order": 4,
+    "id": "l1-bio"
+  },
+  {
+    "num": 5,
+    "discipline": "Verbal Abilities",
+    "subject_id": "eng",
+    "stem": "Choose the word that is closest in meaning to rapid.",
+    "options": [
+      "Slow",
+      "Fast",
+      "Weak",
+      "Quiet"
+    ],
+    "level": 1,
+    "correct_index": 1,
+    "explanation": null,
+    "difficulty_rating": 3,
+    "sort_order": 5,
+    "id": "l1-eng"
+  },
+  {
+    "num": 6,
+    "discipline": "Quantitative Abilities",
+    "subject_id": "eco",
+    "stem": "A book costs ₹200. What is its price after a discount of ₹20?",
+    "options": [
+      "₹160",
+      "₹180",
+      "₹200",
+      "₹220"
+    ],
+    "level": 1,
+    "correct_index": 1,
+    "explanation": null,
+    "difficulty_rating": 3,
+    "sort_order": 7,
+    "id": "l1-eco"
+  },
+  {
+    "num": 7,
+    "discipline": "Analytical Abilities",
+    "subject_id": "log",
+    "stem": "All roses are flowers. Some flowers are red. Which statement is definitely true?",
+    "options": [
+      "All red things are roses",
+      "All flowers are roses",
+      "All roses are flowers",
+      "No rose is red"
+    ],
+    "level": 1,
+    "correct_index": 2,
+    "explanation": null,
+    "difficulty_rating": 3,
+    "sort_order": 10,
+    "id": "l1-log"
+  },
+  {
+    "num": 8,
+    "discipline": "General Knowledge",
+    "subject_id": "gk",
+    "stem": "Which planet is known as the Red Planet?",
+    "options": [
+      "Venus",
+      "Mars",
+      "Jupiter",
+      "Mercury"
+    ],
+    "level": 1,
+    "correct_index": 1,
+    "explanation": null,
+    "difficulty_rating": 3,
+    "sort_order": 9,
+    "id": "l1-gk"
+  },
+  {
+    "num": 9,
+    "discipline": "Financial Literacy",
+    "subject_id": "fin",
+    "stem": "What is the amount deposited in a bank account called before interest is added?",
+    "options": [
+      "Principal",
+      "Profit",
+      "Tax",
+      "Dividend"
+    ],
+    "level": 1,
+    "correct_index": 0,
+    "explanation": null,
+    "difficulty_rating": 3,
+    "sort_order": 8,
+    "id": "l1-fin"
+  },
+  {
+    "num": 10,
+    "discipline": "AI and Computer Science",
+    "subject_id": "cs",
+    "stem": "Which of the following is an example of Artificial Intelligence?",
+    "options": [
+      "A wooden ruler",
+      "A calculator performing fixed arithmetic",
+      "A voice assistant understanding spoken commands",
+      "A notebook storing handwritten notes"
+    ],
+    "level": 1,
+    "correct_index": 2,
+    "explanation": null,
+    "difficulty_rating": 3,
+    "sort_order": 6,
+    "id": "l1-cs"
+  },
+  {
+    "num": 1,
+    "discipline": "Physics",
+    "subject_id": "phy",
+    "stem": "A car starts from rest and accelerates uniformly at 3 m s⁻² for 4 seconds. What is its final velocity?",
+    "options": [
+      "7 m s⁻¹",
+      "12 m s⁻¹",
+      "16 m s⁻¹",
+      "24 m s⁻¹"
+    ],
+    "level": 2,
+    "correct_index": 1,
+    "explanation": "v = u + at = 0 + 3 × 4 = 12 m s⁻¹.",
+    "difficulty_rating": 5,
+    "sort_order": 1,
+    "id": "l2-phy"
+  },
+  {
+    "num": 2,
+    "discipline": "Chemistry",
+    "subject_id": "che",
+    "stem": "Which element has the electronic configuration 2, 8, 7?",
+    "options": [
+      "Oxygen",
+      "Fluorine",
+      "Chlorine",
+      "Argon"
+    ],
+    "level": 2,
+    "correct_index": 2,
+    "explanation": "Chlorine has 17 electrons arranged as 2, 8, 7.",
+    "difficulty_rating": 5,
+    "sort_order": 2,
+    "id": "l2-che"
+  },
+  {
+    "num": 3,
+    "discipline": "Mathematics",
+    "subject_id": "mat",
+    "stem": "If x² − 7x + 12 = 0, what are the values of x?",
+    "options": [
+      "2 and 6",
+      "3 and 4",
+      "−3 and −4",
+      "1 and 12"
+    ],
+    "level": 2,
+    "correct_index": 1,
+    "explanation": "x² − 7x + 12 = (x − 3)(x − 4).",
+    "difficulty_rating": 5,
+    "sort_order": 3,
+    "id": "l2-mat"
+  },
+  {
+    "num": 4,
+    "discipline": "Biology",
+    "subject_id": "bio",
+    "stem": "Which process produces genetically different daughter cells?",
+    "options": [
+      "Binary fission",
+      "Mitosis",
+      "Meiosis",
+      "Budding"
+    ],
+    "level": 2,
+    "correct_index": 2,
+    "explanation": "Meiosis produces variation through recombination and chromosome separation.",
+    "difficulty_rating": 5,
+    "sort_order": 4,
+    "id": "l2-bio"
+  },
+  {
+    "num": 5,
+    "discipline": "Verbal Abilities",
+    "subject_id": "eng",
+    "stem": "Choose the word that is closest in meaning to “meticulous.”",
+    "options": [
+      "Careless",
+      "Thorough",
+      "Rapid",
+      "Uncertain"
+    ],
+    "level": 2,
+    "correct_index": 1,
+    "explanation": "Meticulous means very careful, accurate and attentive to detail.",
+    "difficulty_rating": 5,
+    "sort_order": 5,
+    "id": "l2-eng"
+  },
+  {
+    "num": 6,
+    "discipline": "Quantitative Abilities",
+    "subject_id": "eco",
+    "stem": "A product marked at ₹2,000 is sold at a discount of 15%. What is its selling price?",
+    "options": [
+      "₹1,600",
+      "₹1,650",
+      "₹1,700",
+      "₹1,750"
+    ],
+    "level": 2,
+    "correct_index": 2,
+    "explanation": "Discount = 15% of ₹2,000 = ₹300; selling price = ₹1,700.",
+    "difficulty_rating": 5,
+    "sort_order": 7,
+    "id": "l2-eco"
+  },
+  {
+    "num": 7,
+    "discipline": "Analytical Abilities",
+    "subject_id": "log",
+    "stem": "All engineers are graduates. Some graduates are musicians. Which conclusion definitely follows?",
+    "options": [
+      "All musicians are engineers.",
+      "Some engineers are musicians.",
+      "All graduates are engineers.",
+      "Engineers are graduates."
+    ],
+    "level": 2,
+    "correct_index": 3,
+    "explanation": "This directly follows from the statement that all engineers are graduates.",
+    "difficulty_rating": 5,
+    "sort_order": 10,
+    "id": "l2-log"
+  },
+  {
+    "num": 8,
+    "discipline": "General Knowledge",
+    "subject_id": "gk",
+    "stem": "Which Indian space mission successfully landed near the Moon’s south polar region in August 2023?",
+    "options": [
+      "Chandrayaan-1",
+      "Chandrayaan-2",
+      "Chandrayaan-3",
+      "Mangalyaan"
+    ],
+    "level": 2,
+    "correct_index": 2,
+    "explanation": "Chandrayaan-3 achieved a successful soft landing near the lunar south polar region.",
+    "difficulty_rating": 5,
+    "sort_order": 9,
+    "id": "l2-gk"
+  },
+  {
+    "num": 9,
+    "discipline": "Financial Literacy",
+    "subject_id": "fin",
+    "stem": "An investment earns 8% simple interest per year. What interest will be earned on ₹10,000 in 2 years?",
+    "options": [
+      "₹800",
+      "₹1,200",
+      "₹1,600",
+      "₹1,800"
+    ],
+    "level": 2,
+    "correct_index": 2,
+    "explanation": "SI = PRT/100 = 10,000 × 8 × 2 ÷ 100 = ₹1,600.",
+    "difficulty_rating": 5,
+    "sort_order": 8,
+    "id": "l2-fin"
+  },
+  {
+    "num": 10,
+    "discipline": "AI and Computer Science",
+    "subject_id": "cs",
+    "stem": "In machine learning, what is a training dataset primarily used for?",
+    "options": [
+      "To permanently store the software",
+      "To teach a model to recognise patterns",
+      "To increase internet speed",
+      "To encrypt computer files"
+    ],
+    "level": 2,
+    "correct_index": 1,
+    "explanation": "Training data helps an AI model learn relationships and make predictions.",
+    "difficulty_rating": 5,
+    "sort_order": 6,
+    "id": "l2-cs"
+  },
+  {
+    "num": 1,
+    "discipline": "Physics",
+    "subject_id": "phy",
+    "stem": "A 2 kg block moving at 6 m s⁻¹ collides with a stationary 4 kg block. They stick together after the collision. What is their common velocity?",
+    "options": [
+      "1 m s⁻¹",
+      "2 m s⁻¹",
+      "3 m s⁻¹",
+      "4 m s⁻¹"
+    ],
+    "level": 3,
+    "correct_index": 1,
+    "explanation": "Conservation of momentum: (2 × 6) + (4 × 0) = (2 + 4)v. Therefore, 12 = 6v, so v = 2 m s⁻¹.",
+    "difficulty_rating": 7,
+    "sort_order": 1,
+    "id": "l3-phy"
+  },
+  {
+    "num": 2,
+    "discipline": "Chemistry",
+    "subject_id": "che",
+    "stem": "For the equilibrium:\nN₂(g) + 3H₂(g) ⇌ 2NH₃(g) + heat\nWhich change will increase the equilibrium yield of ammonia?",
+    "options": [
+      "Increasing temperature and decreasing pressure",
+      "Decreasing temperature and increasing pressure",
+      "Increasing temperature and increasing volume",
+      "Adding more ammonia"
+    ],
+    "level": 3,
+    "correct_index": 1,
+    "explanation": "The forward reaction is exothermic and produces fewer gas molecules. Lower temperature and higher pressure favour ammonia formation.",
+    "difficulty_rating": 7,
+    "sort_order": 2,
+    "id": "l3-che"
+  },
+  {
+    "num": 3,
+    "discipline": "Mathematics",
+    "subject_id": "mat",
+    "stem": "If the roots of the equation x² − 8x + k = 0 differ by 4, what is the value of k?",
+    "options": [
+      "8",
+      "12",
+      "16",
+      "20"
+    ],
+    "level": 3,
+    "correct_index": 1,
+    "explanation": "If roots are α and β, then α + β = 8 and α − β = 4. Using (α − β)² = (α + β)² − 4αβ: 16 = 64 − 4k, giving k = 12.",
+    "difficulty_rating": 7,
+    "sort_order": 3,
+    "id": "l3-mat"
+  },
+  {
+    "num": 4,
+    "discipline": "Biology",
+    "subject_id": "bio",
+    "stem": "A heterozygous tall pea plant is crossed with a dwarf pea plant. If tallness is dominant, what percentage of the offspring is expected to be dwarf?",
+    "options": [
+      "0%",
+      "25%",
+      "50%",
+      "75%"
+    ],
+    "level": 3,
+    "correct_index": 2,
+    "explanation": "The cross is Tt × tt. The offspring are 50% Tt, which are tall, and 50% tt, which are dwarf.",
+    "difficulty_rating": 7,
+    "sort_order": 4,
+    "id": "l3-bio"
+  },
+  {
+    "num": 5,
+    "discipline": "Verbal Abilities",
+    "subject_id": "eng",
+    "stem": "Choose the sentence that uses the word “ambiguous” correctly.",
+    "options": [
+      "The instructions were ambiguous, so every student understood them immediately.",
+      "His ambiguous reply could be interpreted in more than one way.",
+      "The answer was ambiguous because it was completely accurate.",
+      "The scientist made an ambiguous measurement using a calibrated instrument."
+    ],
+    "level": 3,
+    "correct_index": 1,
+    "explanation": "Ambiguous means unclear or capable of more than one interpretation.",
+    "difficulty_rating": 7,
+    "sort_order": 5,
+    "id": "l3-eng"
+  },
+  {
+    "num": 6,
+    "discipline": "Quantitative Abilities",
+    "subject_id": "eco",
+    "stem": "A train travels the first half of a journey at 40 km h⁻¹ and the second half at 60 km h⁻¹. What is its average speed for the entire journey?",
+    "options": [
+      "45 km h⁻¹",
+      "48 km h⁻¹",
+      "50 km h⁻¹",
+      "52 km h⁻¹"
+    ],
+    "level": 3,
+    "correct_index": 1,
+    "explanation": "For equal distances, average speed = 2ab ÷ (a + b) = 2 × 40 × 60 ÷ 100 = 48 km h⁻¹.",
+    "difficulty_rating": 7,
+    "sort_order": 7,
+    "id": "l3-eco"
+  },
+  {
+    "num": 7,
+    "discipline": "Analytical Abilities",
+    "subject_id": "log",
+    "stem": "Five students—P, Q, R, S and T—stand in a line.\nQ is immediately to the right of P.\nR is at one end.\nS is not next to R.\nT is to the left of S.\nWhich arrangement is possible?",
+    "options": [
+      "R, P, Q, T, S",
+      "P, Q, S, T, R",
+      "T, S, R, P, Q",
+      "R, T, P, Q, S"
+    ],
+    "level": 3,
+    "correct_index": 0,
+    "explanation": "Q is immediately right of P, R is at an end, S is not next to R, and T is left of S. Only option A satisfies all conditions.",
+    "difficulty_rating": 7,
+    "sort_order": 10,
+    "id": "l3-log"
+  },
+  {
+    "num": 8,
+    "discipline": "General Knowledge",
+    "subject_id": "gk",
+    "stem": "Which scientific development is most directly associated with the work of S. N. Bose?",
+    "options": [
+      "Discovery of electromagnetic induction",
+      "Bose–Einstein statistics",
+      "Development of the Raman effect",
+      "Formulation of the uncertainty principle"
+    ],
+    "level": 3,
+    "correct_index": 1,
+    "explanation": "S. N. Bose developed the statistical method later extended by Albert Einstein, leading to Bose–Einstein statistics.",
+    "difficulty_rating": 7,
+    "sort_order": 9,
+    "id": "l3-gk"
+  },
+  {
+    "num": 9,
+    "discipline": "Financial Literacy",
+    "subject_id": "fin",
+    "stem": "An investor deposits ₹20,000 at 10% annual compound interest, compounded annually. What will be the amount after 2 years?",
+    "options": [
+      "₹22,000",
+      "₹24,000",
+      "₹24,200",
+      "₹26,000"
+    ],
+    "level": 3,
+    "correct_index": 2,
+    "explanation": "Amount = 20,000 × (1.10)² = 20,000 × 1.21 = ₹24,200.",
+    "difficulty_rating": 7,
+    "sort_order": 8,
+    "id": "l3-fin"
+  },
+  {
+    "num": 10,
+    "discipline": "AI and Computer Science",
+    "subject_id": "cs",
+    "stem": "A machine-learning model performs extremely well on training data but poorly on new, unseen data. This problem is called:",
+    "options": [
+      "Encryption",
+      "Overfitting",
+      "Compression",
+      "Normalisation"
+    ],
+    "level": 3,
+    "correct_index": 1,
+    "explanation": "Overfitting occurs when a model learns training data too closely, including noise, and fails to generalise to new data.",
+    "difficulty_rating": 7,
+    "sort_order": 6,
+    "id": "l3-cs"
+  }
+]

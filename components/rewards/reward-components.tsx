@@ -13,6 +13,7 @@ import {
   School,
   Triangle,
   Trophy,
+  Sparkles,
 } from "lucide-react";
 
 import { AnimatedNumber } from "@/components/common/animated-number";
@@ -45,25 +46,32 @@ interface RewardsHeroProps {
 
 export function RewardsHero({ streakDays, xp }: RewardsHeroProps) {
   return (
-    <GlassCard className="relative overflow-hidden" hover>
-      <div className="pointer-events-none absolute inset-0 shimmer opacity-30" aria-hidden />
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-level-violet/10" />
-      <div className="relative flex flex-wrap items-center gap-6">
-        <div>
-          <p className="text-sm text-muted-foreground">Your streak rewards</p>
-          <p className="text-3xl font-bold">
-            <AnimatedNumber value={streakDays} /> days
-          </p>
+    <div className="glass-card card-top-light rounded-2xl p-6 relative overflow-hidden shadow-2xl border-emerald-500/20">
+      <div className="pointer-events-none absolute inset-0 shimmer opacity-25" aria-hidden />
+      <div className="absolute top-0 right-0 size-48 bg-gradient-to-br from-emerald-500/15 via-teal-500/10 to-transparent rounded-full blur-3xl pointer-events-none" />
+
+      <div className="relative z-10 flex flex-wrap items-center justify-between gap-6">
+        <div className="flex items-center gap-6">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">Streak Rewards</p>
+            <p className="text-3xl font-extrabold text-white sm:text-4xl mt-1 tracking-tight flex items-center gap-2">
+              <AnimatedNumber value={streakDays} /> <span className="text-lg font-semibold text-emerald-400">days</span>
+            </p>
+          </div>
+          <div className="h-12 w-px bg-white/10" aria-hidden />
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">Total XP Earned</p>
+            <p className="text-3xl font-extrabold text-emerald-400 sm:text-4xl mt-1 tracking-tight font-mono">
+              <AnimatedNumber value={xp} format={{ useGrouping: true }} />
+            </p>
+          </div>
         </div>
-        <div className="h-12 w-px bg-border" aria-hidden />
-        <div>
-          <p className="text-sm text-muted-foreground">Total XP earned</p>
-          <p className="text-3xl font-bold text-primary">
-            <AnimatedNumber value={xp} format={{ useGrouping: true }} />
-          </p>
+
+        <div className="flex items-center gap-2 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-3 py-1.5 text-xs font-bold text-emerald-300">
+          <Sparkles className="size-4 text-emerald-400" /> Rewards Multiplier Active
         </div>
       </div>
-    </GlassCard>
+    </div>
   );
 }
 
@@ -78,20 +86,21 @@ export function RewardCard({ title, subtitle, icon, accent }: RewardCardProps) {
   const Icon = prizeIconMap[icon as keyof typeof prizeIconMap] ?? Trophy;
 
   const labelColorClass = cn(
-    accent === "amber" && "text-amber-400/90",
-    accent === "blue" && "text-blue-400/90",
-    accent === "violet" && "text-violet-400/90",
-    accent === "rose" && "text-rose-400/90",
-    accent === "teal" && "text-teal-400/90"
+    accent === "amber" && "text-amber-400",
+    accent === "blue" && "text-cyan-400",
+    accent === "violet" && "text-violet-400",
+    accent === "rose" && "text-rose-400",
+    accent === "teal" && "text-emerald-400",
+    accent === "pink" && "text-pink-400"
   );
 
   return (
     <motion.div
       variants={staggerItem}
-      whileHover={{ y: -6, scale: 1.02 }}
+      whileHover={{ y: -6, scale: 1.03 }}
       transition={springSoft}
       className={cn(
-        "glass flex flex-col items-center justify-center text-center gap-4 rounded-2xl p-5 min-h-[160px]",
+        "glass-card card-top-light flex flex-col items-center justify-center text-center gap-4 rounded-2xl p-5 min-h-[170px] relative overflow-hidden transition-all duration-300",
         accentClasses(accent)
       )}
     >
@@ -99,21 +108,22 @@ export function RewardCard({ title, subtitle, icon, accent }: RewardCardProps) {
         animate={{ rotate: [0, -6, 6, 0] }}
         transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
         className={cn(
-          "flex size-14 items-center justify-center rounded-full bg-white/5 border border-white/10 shadow-inner",
-          accent === "amber" && "text-amber-400 bg-amber-400/10 border-amber-500/20",
-          accent === "blue" && "text-blue-400 bg-blue-400/10 border-blue-500/20",
-          accent === "violet" && "text-violet-400 bg-violet-400/10 border-violet-500/20",
-          accent === "rose" && "text-rose-400 bg-rose-400/10 border-rose-500/20",
-          accent === "teal" && "text-teal-400 bg-teal-400/10 border-teal-500/20"
+          "flex size-14 items-center justify-center rounded-2xl border shadow-lg transition-transform",
+          accent === "amber" && "text-amber-400 bg-amber-500/20 border-amber-400/40 shadow-amber-500/20",
+          accent === "blue" && "text-cyan-400 bg-cyan-500/20 border-cyan-400/40 shadow-cyan-500/20",
+          accent === "violet" && "text-violet-400 bg-violet-500/20 border-violet-400/40 shadow-violet-500/20",
+          accent === "rose" && "text-rose-400 bg-rose-500/20 border-rose-400/40 shadow-rose-500/20",
+          accent === "teal" && "text-emerald-400 bg-emerald-500/20 border-emerald-400/40 shadow-emerald-500/20",
+          accent === "pink" && "text-pink-400 bg-pink-500/20 border-pink-400/40 shadow-pink-500/20"
         )}
       >
-        <Icon className="size-7 shrink-0" />
+        <Icon className="size-7 shrink-0 stroke-[2.2]" />
       </motion.div>
       <div className="flex flex-col gap-1 w-full">
-        <p className={cn("text-[11px] font-medium tracking-wider uppercase", labelColorClass)}>
+        <p className={cn("text-[10px] font-extrabold tracking-widest uppercase font-mono", labelColorClass)}>
           {title}
         </p>
-        <p className="text-lg font-bold text-white tracking-tight">
+        <p className="text-xl font-extrabold text-white tracking-tight">
           {subtitle}
         </p>
       </div>
@@ -127,7 +137,7 @@ export function RewardGrid({ children }: { children: React.ReactNode }) {
       variants={staggerContainer}
       initial="hidden"
       animate="visible"
-      className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6"
+      className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6"
     >
       {children}
     </motion.div>
@@ -146,7 +156,7 @@ interface BadgesRowProps {
 
 export function BadgesRow({ badges }: BadgesRowProps) {
   return (
-    <div className="flex flex-wrap gap-4">
+    <div className="flex flex-wrap gap-4 sm:gap-5">
       {badges.map((badge, index) => {
         const Icon = badgeIconMap[badge.icon as keyof typeof badgeIconMap] ?? Award;
         return (
@@ -155,21 +165,23 @@ export function BadgesRow({ badges }: BadgesRowProps) {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.07 }}
-            whileHover={badge.unlocked ? { y: -4, scale: 1.05 } : undefined}
+            whileHover={badge.unlocked ? { y: -5, scale: 1.06 } : undefined}
             className={cn(
-              "flex w-24 flex-col items-center gap-2 text-center",
-              !badge.unlocked && "opacity-50"
+              "flex w-24 flex-col items-center gap-2 text-center group cursor-pointer",
+              !badge.unlocked && "opacity-55"
             )}
           >
             <div
               className={cn(
-                "flex size-14 items-center justify-center rounded-2xl border",
-                badge.unlocked ? accentClasses(badge.accent) : "border-border bg-muted/30"
+                "flex size-14 items-center justify-center rounded-2xl border transition-all duration-300 shadow-md",
+                badge.unlocked
+                  ? accentClasses(badge.accent)
+                  : "border-white/10 bg-slate-900/60 text-muted-foreground group-hover:border-white/20"
               )}
             >
-              <Icon className="size-6" />
+              <Icon className={cn("size-6", badge.unlocked ? "stroke-[2.2]" : "opacity-60")} />
             </div>
-            <p className="text-xs text-muted-foreground">{badge.label}</p>
+            <p className="text-xs font-bold text-slate-300 group-hover:text-white transition-colors">{badge.label}</p>
           </motion.div>
         );
       })}
@@ -179,22 +191,23 @@ export function BadgesRow({ badges }: BadgesRowProps) {
 
 export function ReferralRewardCard() {
   return (
-    <GlassCard className="border-level-blue/30" hover>
-      <div className="flex items-start gap-3">
+    <div className="glass-card card-top-light rounded-2xl p-5 relative overflow-hidden border-cyan-500/30 bg-gradient-to-r from-cyan-500/10 via-card/80 to-cyan-500/5 shadow-xl">
+      <div className="flex items-start gap-4">
         <motion.div
-          className="flex size-10 items-center justify-center rounded-xl bg-level-blue/10 text-level-blue"
+          className="flex size-12 items-center justify-center rounded-2xl bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 shadow-lg shadow-cyan-500/20 shrink-0"
           animate={{ rotate: [0, -8, 8, 0] }}
           transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
         >
-          <Gift className="size-5" />
+          <Gift className="size-6 text-cyan-300" />
         </motion.div>
-        <div>
-          <h3 className="font-semibold">Refer & earn streak bonuses</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
+        <div className="space-y-1.5">
+          <h3 className="font-bold text-white text-base tracking-tight">Refer & Earn Streak Bonuses</h3>
+          <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
             Invite a classmate — you both get a 2-day streak shield and bonus XP toward Level 4.
           </p>
         </div>
       </div>
-    </GlassCard>
+    </div>
   );
 }
+

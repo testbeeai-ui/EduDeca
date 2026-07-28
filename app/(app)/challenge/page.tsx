@@ -1,41 +1,64 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { ChallengeSession } from "@/components/challenge/challenge-session";
 import { ProctoredPaywall } from "@/components/challenge/proctored-paywall";
 import { EduDecaLogo } from "@/components/shell/edudeca-logo";
+import { isTesterInvestorEmail } from "@/lib/admin/tester-allowlist";
+import { saveChallengeAttempt } from "@/lib/challenge/load-daily-challenge";
+import { challengeMaxStrikes } from "@/lib/challenge/spec";
+import { postTesterAction } from "@/lib/progress/client";
 import type { ChallengeCompletePayload } from "@/lib/types";
 import { useAppStore } from "@/store/useAppStore";
 
 export default function ChallengePage() {
   const router = useRouter();
+  const email = useAppStore((s) => s.email);
   const campaignLevel = useAppStore((s) => s.campaignLevel);
   const isProctoredPaid = useAppStore((s) => s.isProctoredPaid);
   const todayCompleted = useAppStore((s) => s.todayCompleted);
   const applyChallengeResult = useAppStore((s) => s.applyChallengeResult);
   const setProctoredPaid = useAppStore((s) => s.setProctoredPaid);
-  const antiCaptureEnabled = useAppStore((s) => s.antiCaptureEnabled);
+  const skipDailyWait = useAppStore((s) => s.skipDailyWait);
+  const hydrateProgress = useAppStore((s) => s.hydrateProgress);
+  const antiCapturePreference = useAppStore((s) => s.antiCaptureEnabled);
 
   const [paywallOpen, setPaywallOpen] = useState(
     () => campaignLevel >= 4 && !isProctoredPaid
   );
   const [started, setStarted] = useState(false);
 
+  const isTester = isTesterInvestorEmail(email);
+  const antiCaptureEnabled = isTester ? antiCapturePreference : true;
   const blocked = campaignLevel >= 4 && !isProctoredPaid;
-  const completedToday = todayCompleted && !blocked;
+  const completedToday = todayCompleted && !blocked && !isTester;
+  const maxStrikes = challengeMaxStrikes(campaignLevel);
+
+  useEffect(() => {
+    if (isTester && todayCompleted && !blocked) {
+      skipDailyWait();
+      void postTesterAction({ action: "skip_wait" }).then((progress) => {
+        if (progress) hydrateProgress(progress);
+      });
+    }
+  }, [isTester, todayCompleted, blocked, skipDailyWait, hydrateProgress]);
 
   const handleComplete = useCallback(
     (payload: ChallengeCompletePayload) => {
       if (payload.reason !== "quit") {
         applyChallengeResult(payload);
+        const strikes = payload.results.filter((r) => !r.isCorrect).length;
+        void saveChallengeAttempt({ ...payload, strikes }).then((progress) => {
+          if (progress) hydrateProgress(progress);
+        });
       }
       if (payload.reason === "won" && payload.campaignLevelAtStart === 3) {
         setPaywallOpen(true);
       }
     },
-    [applyChallengeResult]
+    [applyChallengeResult, hydrateProgress]
   );
 
   const handlePay = () => {
@@ -110,9 +133,9 @@ export default function ChallengePage() {
               Daily Challenge
             </p>
             <p className="text-[11px] text-muted-foreground sm:text-xs">
-              10 questions · 1 per discipline ·{" "}
+              10 questions · 1 per discipline · {maxStrikes} strikes ·{" "}
               {antiCaptureEnabled ? "Screenshots blocked · " : ""}
-              80% to pass
+              finish to pass
             </p>
           </div>
         </header>

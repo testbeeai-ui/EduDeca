@@ -4,7 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { createPortal } from "react-dom";
 import { CameraOff } from "lucide-react";
 
-import { buildDailyChallenge } from "@/data/challenge-questions";
+import { loadDailyChallenge } from "@/lib/challenge/load-daily-challenge";
 import { ChallengeHud } from "@/components/challenge/challenge-hud";
 import {
   ChallengeQuestionCard,
@@ -13,6 +13,7 @@ import {
 import { ChallengeSummary } from "@/components/challenge/challenge-summary";
 import { Button } from "@/components/ui/button";
 import { useChallengeAntiCapture } from "@/hooks/use-challenge-anti-capture";
+import { isTesterInvestorEmail } from "@/lib/admin/tester-allowlist";
 import { useAppStore } from "@/store/useAppStore";
 import {
   buildEduBlastDotStates,
@@ -22,6 +23,7 @@ import {
 } from "@/lib/challenge/meta";
 import {
   CHALLENGE_SPEC,
+  challengeMaxStrikes,
   challengePerQuestionTotalSec,
   challengeSessionDurationSec,
 } from "@/lib/challenge/spec";
@@ -43,12 +45,17 @@ interface ChallengeSessionProps {
 type SessionPhase = "playing" | "summary";
 
 export function ChallengeSession({ campaignLevel, onComplete, onQuit, onOpenPaywall }: ChallengeSessionProps) {
-  const antiCaptureEnabled = useAppStore((s) => s.antiCaptureEnabled);
+  const email = useAppStore((s) => s.email);
+  const antiCapturePreference = useAppStore((s) => s.antiCaptureEnabled);
+  const antiCaptureEnabled = isTesterInvestorEmail(email) ? antiCapturePreference : true;
   const sessionSec = challengeSessionDurationSec();
   const perQuestionTotalSec = challengePerQuestionTotalSec();
-  const { readPhaseSec, optionsPhaseSec, maxStrikes, minCorrect } = CHALLENGE_SPEC;
+  const maxStrikes = challengeMaxStrikes(campaignLevel);
+  const { readPhaseSec, optionsPhaseSec } = CHALLENGE_SPEC;
 
   const [questions, setQuestions] = useState<ChallengeQuestion[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadingQuestions, setLoadingQuestions] = useState(true);
   const [index, setIndex] = useState(0);
   const [results, setResults] = useState<ChallengeResult[]>([]);
   const [sessionLeft, setSessionLeft] = useState(sessionSec);
@@ -94,9 +101,11 @@ export function ChallengeSession({ campaignLevel, onComplete, onQuit, onOpenPayw
   }, [perQuestionLeft]);
 
   useEffect(() => {
+    let cancelled = false;
     campaignLevelAtStartRef.current = campaignLevel;
-    const built = buildDailyChallenge(campaignLevel);
-    setQuestions(built);
+    setLoadingQuestions(true);
+    setLoadError(null);
+    setQuestions([]);
     setIndex(0);
     setResults([]);
     setRoundOutcomes([]);
@@ -105,9 +114,27 @@ export function ChallengeSession({ campaignLevel, onComplete, onQuit, onOpenPayw
     setPhase("playing");
     setSummaryReason(null);
     sessionEndRef.current = false;
-    sessionStartedAtRef.current = Date.now();
-    setSessionLeft(sessionSec);
     terminalAppliedRef.current = false;
+
+    void loadDailyChallenge(campaignLevel)
+      .then((built) => {
+        if (cancelled) return;
+        setQuestions(built);
+        sessionStartedAtRef.current = Date.now();
+        setSessionLeft(sessionSec);
+        setLoadingQuestions(false);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        const message =
+          err instanceof Error ? err.message : "Could not load today's questions";
+        setLoadError(message);
+        setLoadingQuestions(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [campaignLevel, sessionSec]);
 
   const lockResultReviewFromRemaining = useCallback(() => {
@@ -126,14 +153,19 @@ export function ChallengeSession({ campaignLevel, onComplete, onQuit, onOpenPayw
   const finalizeRun = useCallback(
     (reason: "strikes" | "time" | "finish") => {
       const correct = resultsRef.current.filter((r) => r.isCorrect).length;
-      const passedBar = correct >= minCorrect;
+      const misses = resultsRef.current.filter((r) => !r.isCorrect).length;
+      // Pass = finish the set without exceeding strikes (L1 allows 5 wrong/skips).
+      const passed = reason === "finish" && misses <= maxStrikes;
       setPhase("summary");
 
       let summary: ChallengeSummaryReason;
-      if (passedBar) {
+      if (passed) {
         summary = "won";
+      } else if (reason === "finish") {
+        // Should be rare (finish path already checks strikes), keep a safe fail label.
+        summary = "strikes";
       } else {
-        summary = reason === "finish" ? "below_threshold" : reason;
+        summary = reason;
       }
       setSummaryReason(summary);
 
@@ -148,14 +180,15 @@ export function ChallengeSession({ campaignLevel, onComplete, onQuit, onOpenPayw
         });
       }
     },
-    [minCorrect, onComplete]
+    [maxStrikes, onComplete]
   );
 
   const proceedAfterAnswer = useCallback(() => {
     if (phaseRef.current !== "playing") return;
     isAdvancingRef.current = false;
     const misses = resultsRef.current.filter((r) => !r.isCorrect).length;
-    if (misses >= maxStrikes) {
+    // Fail only after exceeding the strike allowance (L1: 5 allowed → fail on 6th).
+    if (misses > maxStrikes) {
       finalizeRun("strikes");
       return;
     }
@@ -340,6 +373,27 @@ export function ChallengeSession({ campaignLevel, onComplete, onQuit, onOpenPayw
   const dotStates = buildEduBlastDotStates(questions.length, index, roundOutcomes);
   const answered = results.length > index;
 
+  if (loadingQuestions) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 text-muted-foreground">
+        <div className="size-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        <p className="text-sm">Loading Level {campaignLevel} questions…</p>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 px-4 text-center">
+        <p className="text-lg font-semibold text-foreground">Couldn’t load questions</p>
+        <p className="max-w-md text-sm text-muted-foreground">{loadError}</p>
+        <Button type="button" variant="outline" onClick={onQuit}>
+          Back to Home
+        </Button>
+      </div>
+    );
+  }
+
   if (phase === "summary" && summaryReason) {
     return (
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-2 py-4">
@@ -360,7 +414,7 @@ export function ChallengeSession({ campaignLevel, onComplete, onQuit, onOpenPayw
   if (!q) {
     return (
       <div className="flex min-h-0 flex-1 items-center justify-center text-muted-foreground">
-        Loading challenge…
+        No questions available for this level.
       </div>
     );
   }

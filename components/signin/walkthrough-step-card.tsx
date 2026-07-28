@@ -5,7 +5,7 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 
 import { BadgePill } from "@/components/common/badge-pill";
 import { WalkthroughHero } from "@/components/signin/walkthrough-hero";
-import { PhoneOtpForm } from "@/components/signin/phone-otp-form";
+import { GoogleSignInForm } from "@/components/signin/google-sign-in";
 import { StepDots, StepPills } from "@/components/signin/step-pills";
 import { Button } from "@/components/ui/button";
 import type { WalkthroughStep } from "@/lib/types";
@@ -71,7 +71,7 @@ export function WalkthroughStepCard({
           </div>
 
           {isLastStep ? (
-            <PhoneOtpForm title={step.title} description={step.description} />
+            <GoogleSignInForm title={step.title} description={step.description} />
           ) : (
             <>
               <WalkthroughHero icon={step.icon} accent={step.accent} />

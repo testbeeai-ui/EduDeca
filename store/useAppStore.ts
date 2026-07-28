@@ -1,19 +1,15 @@
 import { subjects } from "@/data/subjects";
-import type {
-  ChallengeCompletePayload,
-  ChallengeResult,
-  SubjectLevels,
-} from "@/lib/types";
+import {
+  applyChallengeToProgress,
+  jumpCampaignProgress,
+  skipDailyWaitProgress,
+  withTodayLock,
+} from "@/lib/progress/compute";
+import { defaultEduDecaProgress, defaultSubjectLevels } from "@/lib/progress/defaults";
+import type { EduDecaProgress } from "@/lib/progress/types";
+import type { ChallengeCompletePayload, SubjectLevels } from "@/lib/types";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-
-const DEFAULT_SUBJECT_LEVELS: SubjectLevels = Object.fromEntries(
-  subjects.map((s) => [s.id, 1])
-);
-
-function todayKey(): string {
-  return new Date().toISOString().slice(0, 10);
-}
 
 interface AppState {
   walkthroughStep: number;
@@ -24,10 +20,12 @@ interface AppState {
   setLeaderboardTab: (tab: "students" | "colleges") => void;
   isSignedIn: boolean;
   phone: string | null;
+  email: string | null;
   userName: string | null;
   hasHydrated: boolean;
+  progressSynced: boolean;
   setHasHydrated: (value: boolean) => void;
-  signIn: (name: string, phone: string) => void;
+  signIn: (name: string, options?: { phone?: string | null; email?: string | null }) => void;
   signOut: () => void;
   campaignLevel: number;
   xp: number;
@@ -40,8 +38,53 @@ interface AppState {
   antiCaptureEnabled: boolean;
   setProctoredPaid: () => void;
   setAntiCaptureEnabled: (enabled: boolean) => void;
+  /** Apply server progress snapshot (auth hydrate / admin API / complete). */
+  hydrateProgress: (progress: EduDecaProgress) => void;
+  /** Tester/investor: clear daily lock locally (then sync via API). */
+  skipDailyWait: () => void;
+  /** Tester/investor: jump free-zone campaign to level 1–3 locally (then sync). */
+  jumpToCampaignLevel: (level: 1 | 2 | 3) => void;
   applyChallengeResult: (payload: ChallengeCompletePayload) => void;
   canStartChallenge: () => boolean;
+}
+
+function progressSlice(progress: EduDecaProgress) {
+  return {
+    campaignLevel: progress.campaignLevel,
+    xp: progress.xp,
+    streakDays: progress.streakDays,
+    subjectLevels: progress.subjectLevels,
+    isProctoredPaid: progress.isProctoredPaid,
+    freeZoneComplete: progress.freeZoneComplete,
+    lastChallengeDate: progress.lastChallengeDate,
+    todayCompleted: progress.todayCompleted,
+    antiCaptureEnabled: progress.antiCaptureEnabled,
+    progressSynced: true as const,
+  };
+}
+
+function snapshotFromState(state: {
+  campaignLevel: number;
+  xp: number;
+  streakDays: number;
+  subjectLevels: SubjectLevels;
+  isProctoredPaid: boolean;
+  freeZoneComplete: boolean;
+  lastChallengeDate: string | null;
+  todayCompleted: boolean;
+  antiCaptureEnabled: boolean;
+}): EduDecaProgress {
+  return {
+    campaignLevel: state.campaignLevel,
+    xp: state.xp,
+    streakDays: state.streakDays,
+    subjectLevels: state.subjectLevels,
+    isProctoredPaid: state.isProctoredPaid,
+    freeZoneComplete: state.freeZoneComplete,
+    lastChallengeDate: state.lastChallengeDate,
+    todayCompleted: state.todayCompleted,
+    antiCaptureEnabled: state.antiCaptureEnabled,
+  };
 }
 
 export const useAppStore = create<AppState>()(
@@ -57,27 +100,35 @@ export const useAppStore = create<AppState>()(
       setLeaderboardTab: (tab) => set({ leaderboardTab: tab }),
       isSignedIn: false,
       phone: null,
+      email: null,
       userName: null,
       hasHydrated: false,
+      progressSynced: false,
       setHasHydrated: (value) => set({ hasHydrated: value }),
-      signIn: (name, phone) =>
+      signIn: (name, options) =>
         set({
           isSignedIn: true,
           userName: name.trim(),
-          phone,
+          phone: options?.phone ?? null,
+          email: options?.email ?? null,
           walkthroughStep: 1,
         }),
-      signOut: () =>
+      signOut: () => {
+        const defaults = defaultEduDecaProgress();
         set({
           isSignedIn: false,
           phone: null,
+          email: null,
           userName: null,
           walkthroughStep: 1,
-        }),
+          ...progressSlice(defaults),
+          progressSynced: false,
+        });
+      },
       campaignLevel: 1,
       xp: 0,
       streakDays: 1,
-      subjectLevels: { ...DEFAULT_SUBJECT_LEVELS },
+      subjectLevels: defaultSubjectLevels(1),
       isProctoredPaid: false,
       freeZoneComplete: false,
       lastChallengeDate: null,
@@ -89,6 +140,11 @@ export const useAppStore = create<AppState>()(
           campaignLevel: Math.max(get().campaignLevel, 4),
         }),
       setAntiCaptureEnabled: (enabled) => set({ antiCaptureEnabled: enabled }),
+      hydrateProgress: (progress) => set(progressSlice(progress)),
+      skipDailyWait: () =>
+        set(progressSlice(skipDailyWaitProgress(snapshotFromState(get())))),
+      jumpToCampaignLevel: (level) =>
+        set(progressSlice(jumpCampaignProgress(snapshotFromState(get()), level))),
       canStartChallenge: () => {
         const state = get();
         if (state.campaignLevel >= 4 && !state.isProctoredPaid) {
@@ -97,61 +153,13 @@ export const useAppStore = create<AppState>()(
         return !state.todayCompleted;
       },
       applyChallengeResult: (payload) => {
-        const state = get();
-        const today = todayKey();
-        const xpGain = payload.correct * 10;
-        const nextSubjectLevels = { ...state.subjectLevels };
-
-        for (const result of payload.results) {
-          if (!result.isCorrect) continue;
-          if (nextSubjectLevels[result.subjectId] !== undefined) {
-            nextSubjectLevels[result.subjectId] = Math.min(
-              (nextSubjectLevels[result.subjectId] ?? 1) + 1,
-              10
-            );
-          }
-        }
-
-        let nextStreak = state.streakDays;
-        let nextCampaignLevel = state.campaignLevel;
-        let nextFreeZoneComplete = state.freeZoneComplete;
-        let nextTodayCompleted = state.todayCompleted;
-
-        if (payload.reason === "won") {
-          if (state.lastChallengeDate !== today) {
-            const yesterday = new Date();
-            yesterday.setDate(yesterday.getDate() - 1);
-            const yesterdayKey = yesterday.toISOString().slice(0, 10);
-            nextStreak =
-              state.lastChallengeDate === yesterdayKey ? state.streakDays + 1 : 1;
-          }
-          nextTodayCompleted = true;
-          if (state.campaignLevel < 3) {
-            nextCampaignLevel = state.campaignLevel + 1;
-          } else if (state.campaignLevel === 3) {
-            nextFreeZoneComplete = true;
-          } else if (state.isProctoredPaid && state.campaignLevel < 10) {
-            nextCampaignLevel = state.campaignLevel + 1;
-          }
-        }
-
-        set({
-          xp: state.xp + xpGain,
-          streakDays: nextStreak,
-          subjectLevels: nextSubjectLevels,
-          campaignLevel: nextCampaignLevel,
-          freeZoneComplete: nextFreeZoneComplete,
-          todayCompleted: nextTodayCompleted,
-          lastChallengeDate: payload.reason === "won" ? today : state.lastChallengeDate,
-        });
+        const next = applyChallengeToProgress(snapshotFromState(get()), payload);
+        set(progressSlice(next));
       },
     }),
     {
       name: "edudeca-app",
       partialize: (state) => ({
-        isSignedIn: state.isSignedIn,
-        phone: state.phone,
-        userName: state.userName,
         campaignLevel: state.campaignLevel,
         xp: state.xp,
         streakDays: state.streakDays,
@@ -164,10 +172,20 @@ export const useAppStore = create<AppState>()(
       }),
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);
-        const today = todayKey();
-        if (state && state.lastChallengeDate !== today) {
-          state.todayCompleted = false;
-        }
+        if (!state) return;
+        const locked = withTodayLock({
+          campaignLevel: state.campaignLevel,
+          xp: state.xp,
+          streakDays: state.streakDays,
+          subjectLevels: state.subjectLevels,
+          isProctoredPaid: state.isProctoredPaid,
+          freeZoneComplete: state.freeZoneComplete,
+          lastChallengeDate: state.lastChallengeDate,
+          todayCompleted: state.todayCompleted,
+          antiCaptureEnabled: state.antiCaptureEnabled,
+        });
+        state.todayCompleted = locked.todayCompleted;
+        state.subjectLevels = locked.subjectLevels;
       },
     }
   )
@@ -195,8 +213,9 @@ export function useProgressUser() {
 
 export function useSubjectsWithProgress() {
   const subjectLevels = useAppStore((s) => s.subjectLevels);
+  const campaignLevel = useAppStore((s) => s.campaignLevel);
   return subjects.map((s) => ({
     ...s,
-    level: subjectLevels[s.id] ?? s.level,
+    level: Math.max(subjectLevels[s.id] ?? s.level, campaignLevel),
   }));
 }

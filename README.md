@@ -35,6 +35,13 @@ Opens at [http://localhost:3001](http://localhost:3001) (port 3001 to avoid conf
 
 ## Notes
 
-- Mock data only — no real backend or auth
+- Google OAuth via Supabase (same TestBee project as Edubite)
 - Dark mode first
 - Built for product storytelling and daily learning flow
+
+### Supabase Auth redirect URLs
+
+Add these in Supabase → Authentication → URL Configuration → Redirect URLs:
+
+- `http://localhost:3001/auth/callback`
+- `https://<your-edudeca-domain>/auth/callback`

@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { currentUser } from "@/data/user";
 import { springSnappy } from "@/lib/motion";
+import { supabase } from "@/lib/supabase/client";
 import { cn, initialsFromName } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -17,6 +18,7 @@ export function ProfileMenu() {
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const signOut = useAppStore((s) => s.signOut);
+  const email = useAppStore((s) => s.email);
   const phone = useAppStore((s) => s.phone);
   const userName = useAppStore((s) => s.userName);
   const displayName = userName ?? currentUser.name;
@@ -41,9 +43,10 @@ export function ProfileMenu() {
     };
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setOpen(false);
     signOut();
+    await supabase.auth.signOut({ scope: "local" });
     router.replace("/signin");
   };
 
@@ -99,7 +102,7 @@ export function ProfileMenu() {
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">{displayName}</p>
           <p className="truncate text-xs text-muted-foreground">
-            {phone ? `+91 ${phone}` : `${currentUser.grade} · ${currentUser.school}`}
+            {email ?? (phone ? `+91 ${phone}` : `${currentUser.grade} · ${currentUser.school}`)}
           </p>
         </div>
         <motion.span animate={{ rotate: open ? 0 : 180 }} transition={springSnappy}>
