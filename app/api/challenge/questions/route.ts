@@ -1,21 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { shuffleChallengeOptions } from "@/lib/challenge/shuffle";
+import { LINEUP_SIZE, type DisciplineId } from "@/data/disciplines";
+import { isLineupComplete, validateLineup } from "@/lib/disciplines/selection";
+import { getOrCreateProgress } from "@/lib/progress/server";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import type { ChallengeQuestion } from "@/lib/types";
 
-const SUBJECT_ORDER = [
+const ALL_SUBJECTS: DisciplineId[] = [
   "phy",
   "che",
   "mat",
+  "amat",
   "bio",
-  "eng",
+  "biotech",
   "cs",
+  "ent",
+  "eng",
   "eco",
-  "fin",
-  "gk",
   "log",
-] as const;
+  "gk",
+  "fin",
+];
+
+const FALLBACK_LINEUP: DisciplineId[] = [
+  "phy",
+  "che",
+  "mat",
+  "amat",
+  "cs",
+  "eng",
+  "eco",
+  "log",
+  "gk",
+  "fin",
+];
 
 type QuestionRow = {
   id: string;
@@ -36,8 +55,19 @@ function parseLevel(raw: string | null): number | null {
   return n;
 }
 
-function todaySeed(level: number): number {
-  const key = `${new Date().toISOString().slice(0, 10)}|${level}`;
+function parseDisciplinesParam(raw: string | null): DisciplineId[] | null {
+  if (!raw) return null;
+  const ids = raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const lineup = validateLineup(ids);
+  if (!lineup || !isLineupComplete(lineup)) return null;
+  return ids as DisciplineId[];
+}
+
+function todaySeed(level: number, subjectsKey: string): number {
+  const key = `${new Date().toISOString().slice(0, 10)}|${level}|${subjectsKey}`;
   let hash = 0;
   for (let i = 0; i < key.length; i += 1) {
     hash = (hash << 5) - hash + key.charCodeAt(i);
@@ -47,8 +77,8 @@ function todaySeed(level: number): number {
 }
 
 /**
- * One call: fetch all published questions for a campaign level (1–3 today).
- * Options are shuffled server-side with a stable daily seed.
+ * One call: fetch one MCQ per selected Decathlon discipline for the campaign level.
+ * Subject order follows the student's lineup (10 of 13 disciplines).
  */
 export async function GET(request: NextRequest) {
   const level = parseLevel(request.nextUrl.searchParams.get("level"));
@@ -56,10 +86,38 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Invalid level" }, { status: 400 });
   }
 
-  // Free-zone packs are levels 1–3 until later packs are seeded.
   const questionLevel = Math.min(level, 3);
-
   const supabase = await createSupabaseServer();
+
+  let subjectOrder = parseDisciplinesParam(request.nextUrl.searchParams.get("disciplines"));
+
+  if (!subjectOrder) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) {
+      try {
+        const progress = await getOrCreateProgress(supabase, user);
+        const fromDb = progress.disciplines ? validateLineup(progress.disciplines) : null;
+        if (fromDb && isLineupComplete(fromDb)) {
+          subjectOrder = progress.disciplines as DisciplineId[];
+        }
+      } catch (err) {
+        console.warn("[challenge/questions] progress lookup", err);
+      }
+    }
+  }
+
+  if (!subjectOrder || subjectOrder.length !== LINEUP_SIZE) {
+    subjectOrder = FALLBACK_LINEUP;
+  }
+
+  // Guard: only known discipline ids
+  const allowed = new Set(ALL_SUBJECTS);
+  if (subjectOrder.some((id) => !allowed.has(id))) {
+    return NextResponse.json({ error: "Invalid disciplines" }, { status: 400 });
+  }
+
   const { data, error } = await supabase
     .from("edudeca_questions")
     .select(
@@ -67,6 +125,7 @@ export async function GET(request: NextRequest) {
     )
     .eq("level", questionLevel)
     .eq("published", true)
+    .in("subject_id", subjectOrder)
     .order("sort_order", { ascending: true });
 
   if (error) {
@@ -87,12 +146,16 @@ export async function GET(request: NextRequest) {
     bySubject.set(row.subject_id, row);
   }
 
-  const seed = todaySeed(questionLevel);
+  const seed = todaySeed(questionLevel, subjectOrder.join(","));
   const questions: ChallengeQuestion[] = [];
+  const missing: string[] = [];
 
-  SUBJECT_ORDER.forEach((subjectId, idx) => {
+  subjectOrder.forEach((subjectId, idx) => {
     const row = bySubject.get(subjectId);
-    if (!row) return;
+    if (!row) {
+      missing.push(subjectId);
+      return;
+    }
     const options = Array.isArray(row.options)
       ? row.options.map(String)
       : (JSON.parse(String(row.options)) as string[]);
@@ -109,11 +172,11 @@ export async function GET(request: NextRequest) {
     questions.push(shuffleChallengeOptions(base, seed + idx * 31));
   });
 
-  if (questions.length !== 10) {
+  if (questions.length !== LINEUP_SIZE) {
     return NextResponse.json(
       {
-        error: `Expected 10 subjects, got ${questions.length}`,
-        missing: SUBJECT_ORDER.filter((id) => !bySubject.has(id)),
+        error: `Expected ${LINEUP_SIZE} subjects, got ${questions.length}`,
+        missing,
       },
       { status: 500 },
     );
@@ -122,6 +185,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     level: questionLevel,
     campaignLevel: level,
+    disciplines: subjectOrder,
     questions,
   });
 }

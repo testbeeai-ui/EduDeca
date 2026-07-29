@@ -16,7 +16,8 @@ export function defaultEduDecaProgress(): EduDecaProgress {
     freeZoneComplete: false,
     lastChallengeDate: null,
     todayCompleted: false,
-    antiCaptureEnabled: true,
+    antiCaptureEnabled: false,
+    disciplines: null,
   };
 }
 

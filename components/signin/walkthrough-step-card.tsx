@@ -2,13 +2,22 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, ArrowRight } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import { BadgePill } from "@/components/common/badge-pill";
-import { WalkthroughHero } from "@/components/signin/walkthrough-hero";
+import { DisciplinePicker } from "@/components/signin/discipline-picker";
 import { GoogleSignInForm } from "@/components/signin/google-sign-in";
 import { StepDots, StepPills } from "@/components/signin/step-pills";
+import { WalkthroughHero } from "@/components/signin/walkthrough-hero";
 import { Button } from "@/components/ui/button";
+import {
+  WALKTHROUGH_DISCIPLINES_STEP,
+  WALKTHROUGH_SIGN_IN_STEP,
+} from "@/data/walkthrough";
+import { isLineupComplete } from "@/lib/disciplines/selection";
 import type { WalkthroughStep } from "@/lib/types";
+import { cn } from "@/lib/utils";
+import { useAppStore } from "@/store/useAppStore";
 
 interface WalkthroughStepCardProps {
   steps: WalkthroughStep[];
@@ -28,17 +37,58 @@ export function WalkthroughStepCard({
   onSkipToSignIn,
 }: WalkthroughStepCardProps) {
   const step = steps[currentStep - 1];
-  const isLastStep = currentStep === steps.length;
+  const isLastStep = currentStep === WALKTHROUGH_SIGN_IN_STEP;
+  const isDisciplinesStep = currentStep === WALKTHROUGH_DISCIPLINES_STEP;
+  const disciplineLineup = useAppStore((s) => s.disciplineLineup);
+  const setDisciplineLineup = useAppStore((s) => s.setDisciplineLineup);
+  const setWalkthroughStep = useAppStore((s) => s.setWalkthroughStep);
+  const lineupReady = isLineupComplete(disciplineLineup);
+  const [gateHint, setGateHint] = useState<string | null>(null);
+
+  // Google is step 7 — never allow it until the Decathlon lineup is complete.
+  useEffect(() => {
+    if (currentStep === WALKTHROUGH_SIGN_IN_STEP && !lineupReady) {
+      setWalkthroughStep(WALKTHROUGH_DISCIPLINES_STEP);
+      setGateHint("Pick your 10 disciplines before continuing with Google.");
+    }
+  }, [currentStep, lineupReady, setWalkthroughStep]);
+
+  useEffect(() => {
+    if (lineupReady) setGateHint(null);
+  }, [lineupReady]);
 
   if (!step) return null;
 
+  const goSignInOnlyIfReady = () => {
+    if (!lineupReady) {
+      setWalkthroughStep(WALKTHROUGH_DISCIPLINES_STEP);
+      setGateHint("Pick your 10 disciplines before continuing with Google.");
+      return;
+    }
+    onSkipToSignIn();
+  };
+
+  const handleStepClick = (stepId: number) => {
+    if (stepId === WALKTHROUGH_SIGN_IN_STEP && !lineupReady) {
+      setWalkthroughStep(WALKTHROUGH_DISCIPLINES_STEP);
+      setGateHint("Pick your 10 disciplines before continuing with Google.");
+      return;
+    }
+    onStepClick(stepId);
+  };
+
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 sm:gap-8">
-      <div className="flex items-center justify-between">
+    <div
+      className={cn(
+        "mx-auto flex w-full flex-col",
+        isDisciplinesStep ? "max-w-6xl gap-2.5" : "max-w-2xl gap-6 sm:gap-8",
+      )}
+    >
+      <div className="flex items-center justify-between gap-3">
         {!isLastStep ? (
           <button
             type="button"
-            onClick={onSkipToSignIn}
+            onClick={goSignInOnlyIfReady}
             className="text-sm text-muted-foreground transition-colors hover:text-foreground"
           >
             Skip → Sign in
@@ -51,8 +101,14 @@ export function WalkthroughStepCard({
         </p>
       </div>
 
-      <div className="overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <StepPills steps={steps} currentStep={currentStep} onStepClick={onStepClick} />
+      {gateHint ? (
+        <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-center text-xs font-medium text-amber-200">
+          {gateHint}
+        </p>
+      ) : null}
+
+      <div className="overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <StepPills steps={steps} currentStep={currentStep} onStepClick={handleStepClick} />
       </div>
 
       <AnimatePresence mode="wait">
@@ -61,17 +117,26 @@ export function WalkthroughStepCard({
           initial={{ opacity: 0, x: 24 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -24 }}
-          transition={{ duration: 0.35, ease: "easeOut" }}
-          className="space-y-6"
+          transition={{ duration: 0.28, ease: "easeOut" }}
+          className={cn(isDisciplinesStep ? "space-y-0" : "space-y-6")}
         >
-          <div className="flex justify-center">
-            <BadgePill accent={step.accent} active>
-              {step.stepLabel}
-            </BadgePill>
-          </div>
+          {!isDisciplinesStep ? (
+            <div className="flex justify-center">
+              <BadgePill accent={step.accent} active>
+                {step.stepLabel}
+              </BadgePill>
+            </div>
+          ) : null}
 
-          {isLastStep ? (
+          {isLastStep && lineupReady ? (
             <GoogleSignInForm title={step.title} description={step.description} />
+          ) : isDisciplinesStep || (isLastStep && !lineupReady) ? (
+            <DisciplinePicker
+              lineup={disciplineLineup}
+              onChange={setDisciplineLineup}
+              onContinue={onNext}
+              onBack={onBack}
+            />
           ) : (
             <>
               <WalkthroughHero icon={step.icon} accent={step.accent} />
@@ -86,9 +151,11 @@ export function WalkthroughStepCard({
         </motion.div>
       </AnimatePresence>
 
-      <StepDots total={steps.length} current={currentStep} />
+      {!isDisciplinesStep && !(isLastStep && !lineupReady) ? (
+        <StepDots total={steps.length} current={currentStep} />
+      ) : null}
 
-      {!isLastStep && (
+      {!isLastStep && !isDisciplinesStep && (
         <div className="flex items-center justify-between gap-4">
           <Button
             variant="outline"
@@ -99,7 +166,11 @@ export function WalkthroughStepCard({
           >
             <ArrowLeft className="size-4" />
           </Button>
-          <Button size="lg" className="min-w-[120px] flex-1 rounded-2xl sm:min-w-[140px] sm:flex-none" onClick={onNext}>
+          <Button
+            size="lg"
+            className="min-w-[120px] flex-1 rounded-2xl sm:min-w-[140px] sm:flex-none"
+            onClick={onNext}
+          >
             Next
             <ArrowRight className="size-4" />
           </Button>

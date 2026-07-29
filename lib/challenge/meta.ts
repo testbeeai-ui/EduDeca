@@ -44,13 +44,16 @@ const SUBJECT_LABELS: Record<string, string> = {
   phy: "Physics",
   che: "Chemistry",
   mat: "Mathematics",
+  amat: "Applied Mathematics",
   bio: "Biology",
-  eng: "Verbal Abilities",
+  biotech: "Biotechnology",
+  eng: "Verbal Ability",
   cs: "AI & Computer Science",
-  eco: "Quantitative Abilities",
+  ent: "Entrepreneurship",
+  eco: "Quantitative Ability",
   fin: "Financial Literacy",
   gk: "General Knowledge",
-  log: "Analytical Abilities",
+  log: "Analytical Ability",
 };
 
 export function subjectIdToLabel(subjectId: string): string {

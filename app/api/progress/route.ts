@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { validateLineup, lineupIds } from "@/lib/disciplines/selection";
 import {
   getOrCreateProgress,
   updateAntiCapture,
+  updateDisciplines,
 } from "@/lib/progress/server";
 import { createSupabaseServer } from "@/lib/supabase/server";
 
@@ -26,17 +28,30 @@ export async function GET() {
   }
 }
 
-/** Admin-only: update anti-capture preference. */
+/**
+ * Patch progress fields:
+ * - antiCaptureEnabled → tester/admin only
+ * - disciplines → any signed-in user (10-slot lineup from walkthrough)
+ */
 export async function PATCH(request: NextRequest) {
-  let body: { antiCaptureEnabled?: boolean };
+  let body: { antiCaptureEnabled?: boolean; disciplines?: string[] };
   try {
-    body = (await request.json()) as { antiCaptureEnabled?: boolean };
+    body = (await request.json()) as {
+      antiCaptureEnabled?: boolean;
+      disciplines?: string[];
+    };
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  if (typeof body.antiCaptureEnabled !== "boolean") {
-    return NextResponse.json({ error: "antiCaptureEnabled required" }, { status: 400 });
+  const hasAnti = typeof body.antiCaptureEnabled === "boolean";
+  const hasDisciplines = Array.isArray(body.disciplines);
+
+  if (!hasAnti && !hasDisciplines) {
+    return NextResponse.json(
+      { error: "antiCaptureEnabled or disciplines required" },
+      { status: 400 },
+    );
   }
 
   try {
@@ -49,7 +64,20 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const progress = await updateAntiCapture(supabase, user, body.antiCaptureEnabled);
+    let progress = await getOrCreateProgress(supabase, user);
+
+    if (hasDisciplines) {
+      const lineup = validateLineup(body.disciplines);
+      if (!lineup) {
+        return NextResponse.json({ error: "Invalid disciplines lineup" }, { status: 400 });
+      }
+      progress = await updateDisciplines(supabase, user, lineupIds(lineup));
+    }
+
+    if (hasAnti) {
+      progress = await updateAntiCapture(supabase, user, body.antiCaptureEnabled!);
+    }
+
     return NextResponse.json({ progress });
   } catch (err) {
     const status = (err as { status?: number }).status === 403 ? 403 : 500;

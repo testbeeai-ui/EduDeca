@@ -11,6 +11,8 @@ export interface EduDecaProgress {
   lastChallengeDate: string | null;
   todayCompleted: boolean;
   antiCaptureEnabled: boolean;
+  /** Ordered 10-slot Decathlon lineup (discipline ids). */
+  disciplines?: string[] | null;
 }
 
 export interface EduDecaProgressRow {
@@ -23,4 +25,5 @@ export interface EduDecaProgressRow {
   free_zone_complete: boolean;
   last_challenge_date: string | null;
   anti_capture_enabled: boolean;
+  disciplines?: string[] | null;
 }

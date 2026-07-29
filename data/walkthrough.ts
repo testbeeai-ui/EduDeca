@@ -6,28 +6,17 @@ export const walkthroughSteps: WalkthroughStep[] = [
     slug: "join-free",
     pillLabel: "Join free",
     stepLabel: "STEP 1 · JOIN FREE",
-    title: "10 subjects. 10 questions each. Every single day.",
+    title: "10 subjects. 10 questions each.",
     description:
-      "Class XI & XII level questions across Physics, Chemistry, Maths, Biology, English, CS, Economics, FinLit, GK and Logical Reasoning — free, forever, from Level 1.",
+      "Class XI & XII questions across Physics, Chemistry, Mathematics, Applied Mathematics, Biology, Biotechnology, AI & Computer Science, Entrepreneurship, Verbal Ability, Quantitative Ability, Analytical Ability, General Knowledge, and Financial Literacy — pick your path, free forever from Level 1.",
     icon: "target",
     accent: "teal",
   },
   {
     id: 2,
-    slug: "play-daily",
-    pillLabel: "Play daily",
-    stepLabel: "STEP 2 · PLAY DAILY",
-    title: "Build a streak. Climb Levels 1 → 10.",
-    description:
-      "Answer daily, earn XP, unlock badges, and get instant mini-explanations. Adaptive difficulty keeps you in the zone — the habit loop that sticks.",
-    icon: "flame",
-    accent: "amber",
-  },
-  {
-    id: 3,
     slug: "go-viral",
     pillLabel: "Go viral",
-    stepLabel: "STEP 3 · GO VIRAL",
+    stepLabel: "STEP 2 · GO VIRAL",
     title: "Your college is on the leaderboard too.",
     description:
       "Every score adds to your college's public rank. Squad up, refer classmates, and earn streak bonuses — this is a competition your whole campus can see.",
@@ -35,10 +24,10 @@ export const walkthroughSteps: WalkthroughStep[] = [
     accent: "blue",
   },
   {
-    id: 4,
+    id: 3,
     slug: "level-up",
     pillLabel: "Level up",
-    stepLabel: "STEP 4 · LEVEL UP",
+    stepLabel: "STEP 3 · LEVEL UP",
     title: "Levels 4–6 are proctored — and worth it.",
     description:
       "Once you're ready, pay ₹999 to unlock verified, college-proctored rounds. This is where casual players become ranked contenders.",
@@ -46,15 +35,26 @@ export const walkthroughSteps: WalkthroughStep[] = [
     accent: "violet",
   },
   {
-    id: 5,
+    id: 4,
     slug: "go-national",
     pillLabel: "Go national",
-    stepLabel: "STEP 5 · GO NATIONAL",
+    stepLabel: "STEP 4 · GO NATIONAL",
     title: "Level 7–10 Finals. Real prize money.",
     description:
       "Sponsor-backed metro finals from Dec 2026. Winning student takes ₹10 Lakhs, and every finalist moves straight into Edublast for deep prep.",
     icon: "graduation",
     accent: "violet",
+  },
+  {
+    id: 5,
+    slug: "disciplines",
+    pillLabel: "Pick path",
+    stepLabel: "STEP 5 · YOUR PATH",
+    title: "Choose your Decathlon disciplines",
+    description:
+      "Lock your ten-event lineup — mandatory cores plus three free-path picks that shape how you compete.",
+    icon: "target",
+    accent: "amber",
   },
   {
     id: 6,
@@ -67,3 +67,7 @@ export const walkthroughSteps: WalkthroughStep[] = [
     accent: "teal",
   },
 ];
+
+export const WALKTHROUGH_SIGN_IN_STEP = 6;
+export const WALKTHROUGH_DISCIPLINES_STEP = 5;
+export const WALKTHROUGH_TOTAL_STEPS = walkthroughSteps.length;

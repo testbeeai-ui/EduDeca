@@ -4,7 +4,8 @@ import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 
-import { fetchServerProgress } from "@/lib/progress/client";
+import { fetchServerProgress, patchDisciplines } from "@/lib/progress/client";
+import { isLineupComplete, lineupIds } from "@/lib/disciplines/selection";
 import { supabase } from "@/lib/supabase/client";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -36,8 +37,15 @@ function applyUserToStore(user: User | null) {
 
 async function syncProgressFromServer() {
   const progress = await fetchServerProgress();
-  if (progress) {
-    useAppStore.getState().hydrateProgress(progress);
+  if (!progress) return;
+
+  const store = useAppStore.getState();
+  store.hydrateProgress(progress);
+
+  // Push local walkthrough lineup if server has none yet.
+  if (!progress.disciplines?.length && isLineupComplete(store.disciplineLineup)) {
+    const synced = await patchDisciplines(lineupIds(store.disciplineLineup));
+    if (synced) store.hydrateProgress(synced);
   }
 }
 
@@ -103,14 +111,12 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     if (!hasHydrated) return;
 
     if (!isSignedIn && PROTECTED_ACTIVITY_PATHS.has(pathname)) {
-      router.replace(`/signin?redirect=${encodeURIComponent(pathname)}`);
+      router.replace("/signin");
       return;
     }
 
     if (isSignedIn && pathname === "/signin") {
-      const params = new URLSearchParams(window.location.search);
-      const redirectPath = params.get("redirect") || "/home";
-      router.replace(redirectPath.startsWith("/") ? redirectPath : "/home");
+      router.replace("/home");
     }
   }, [hasHydrated, isSignedIn, pathname, router]);
 

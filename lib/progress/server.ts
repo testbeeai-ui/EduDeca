@@ -18,7 +18,7 @@ async function fetchProgressRow(
   const { data, error } = await supabase
     .from("edudeca_user_progress")
     .select(
-      "user_id, campaign_level, xp, streak_days, subject_levels, is_proctored_paid, free_zone_complete, last_challenge_date, anti_capture_enabled",
+      "user_id, campaign_level, xp, streak_days, subject_levels, is_proctored_paid, free_zone_complete, last_challenge_date, anti_capture_enabled, disciplines",
     )
     .eq("user_id", userId)
     .maybeSingle();
@@ -42,7 +42,7 @@ export async function getOrCreateProgress(
     .from("edudeca_user_progress")
     .upsert(progressToRow(user.id, seed), { onConflict: "user_id" })
     .select(
-      "user_id, campaign_level, xp, streak_days, subject_levels, is_proctored_paid, free_zone_complete, last_challenge_date, anti_capture_enabled",
+      "user_id, campaign_level, xp, streak_days, subject_levels, is_proctored_paid, free_zone_complete, last_challenge_date, anti_capture_enabled, disciplines",
     )
     .single();
 
@@ -62,7 +62,7 @@ export async function saveProgress(
     .from("edudeca_user_progress")
     .upsert(progressToRow(userId, progress), { onConflict: "user_id" })
     .select(
-      "user_id, campaign_level, xp, streak_days, subject_levels, is_proctored_paid, free_zone_complete, last_challenge_date, anti_capture_enabled",
+      "user_id, campaign_level, xp, streak_days, subject_levels, is_proctored_paid, free_zone_complete, last_challenge_date, anti_capture_enabled, disciplines",
     )
     .single();
 
@@ -120,5 +120,17 @@ export async function updateAntiCapture(
   return saveProgress(supabase, user.id, {
     ...current,
     antiCaptureEnabled: enabled,
+  });
+}
+
+export async function updateDisciplines(
+  supabase: SupabaseClient,
+  user: User,
+  disciplines: string[],
+): Promise<EduDecaProgress> {
+  const current = await getOrCreateProgress(supabase, user);
+  return saveProgress(supabase, user.id, {
+    ...current,
+    disciplines,
   });
 }

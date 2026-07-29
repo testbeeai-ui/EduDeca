@@ -1,4 +1,5 @@
 import { subjects } from "@/data/subjects";
+import { WALKTHROUGH_TOTAL_STEPS } from "@/data/walkthrough";
 import {
   applyChallengeToProgress,
   jumpCampaignProgress,
@@ -7,6 +8,13 @@ import {
 } from "@/lib/progress/compute";
 import { defaultEduDecaProgress, defaultSubjectLevels } from "@/lib/progress/defaults";
 import type { EduDecaProgress } from "@/lib/progress/types";
+import {
+  emptyLineup,
+  isLineupComplete,
+  lineupIds,
+  validateLineup,
+  type DisciplineLineup,
+} from "@/lib/disciplines/selection";
 import type { ChallengeCompletePayload, SubjectLevels } from "@/lib/types";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
@@ -36,6 +44,8 @@ interface AppState {
   lastChallengeDate: string | null;
   todayCompleted: boolean;
   antiCaptureEnabled: boolean;
+  disciplineLineup: DisciplineLineup;
+  setDisciplineLineup: (lineup: DisciplineLineup) => void;
   setProctoredPaid: () => void;
   setAntiCaptureEnabled: (enabled: boolean) => void;
   /** Apply server progress snapshot (auth hydrate / admin API / complete). */
@@ -93,7 +103,9 @@ export const useAppStore = create<AppState>()(
       walkthroughStep: 1,
       setWalkthroughStep: (step) => set({ walkthroughStep: step }),
       nextWalkthroughStep: () =>
-        set((state) => ({ walkthroughStep: Math.min(state.walkthroughStep + 1, 6) })),
+        set((state) => ({
+          walkthroughStep: Math.min(state.walkthroughStep + 1, WALKTHROUGH_TOTAL_STEPS),
+        })),
       prevWalkthroughStep: () =>
         set((state) => ({ walkthroughStep: Math.max(state.walkthroughStep - 1, 1) })),
       leaderboardTab: "students",
@@ -123,6 +135,7 @@ export const useAppStore = create<AppState>()(
           walkthroughStep: 1,
           ...progressSlice(defaults),
           progressSynced: false,
+          disciplineLineup: emptyLineup(),
         });
       },
       campaignLevel: 1,
@@ -133,14 +146,26 @@ export const useAppStore = create<AppState>()(
       freeZoneComplete: false,
       lastChallengeDate: null,
       todayCompleted: false,
-      antiCaptureEnabled: true,
+      antiCaptureEnabled: false,
+      disciplineLineup: emptyLineup(),
+      setDisciplineLineup: (lineup) => set({ disciplineLineup: lineup }),
       setProctoredPaid: () =>
         set({
           isProctoredPaid: true,
           campaignLevel: Math.max(get().campaignLevel, 4),
         }),
       setAntiCaptureEnabled: (enabled) => set({ antiCaptureEnabled: enabled }),
-      hydrateProgress: (progress) => set(progressSlice(progress)),
+      hydrateProgress: (progress) => {
+        const patch = progressSlice(progress);
+        const fromServer = progress.disciplines
+          ? validateLineup(progress.disciplines)
+          : null;
+        if (fromServer) {
+          set({ ...patch, disciplineLineup: fromServer });
+          return;
+        }
+        set(patch);
+      },
       skipDailyWait: () =>
         set(progressSlice(skipDailyWaitProgress(snapshotFromState(get())))),
       jumpToCampaignLevel: (level) =>
@@ -169,6 +194,7 @@ export const useAppStore = create<AppState>()(
         lastChallengeDate: state.lastChallengeDate,
         todayCompleted: state.todayCompleted,
         antiCaptureEnabled: state.antiCaptureEnabled,
+        disciplineLineup: state.disciplineLineup,
       }),
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);
@@ -214,7 +240,19 @@ export function useProgressUser() {
 export function useSubjectsWithProgress() {
   const subjectLevels = useAppStore((s) => s.subjectLevels);
   const campaignLevel = useAppStore((s) => s.campaignLevel);
-  return subjects.map((s) => ({
+  const disciplineLineup = useAppStore((s) => s.disciplineLineup);
+
+  const selectedIds = isLineupComplete(disciplineLineup)
+    ? lineupIds(disciplineLineup)
+    : null;
+
+  const catalog = selectedIds
+    ? selectedIds
+        .map((id) => subjects.find((s) => s.id === id))
+        .filter((s): s is (typeof subjects)[number] => Boolean(s))
+    : subjects.slice(0, 10);
+
+  return catalog.map((s) => ({
     ...s,
     level: Math.max(subjectLevels[s.id] ?? s.level, campaignLevel),
   }));

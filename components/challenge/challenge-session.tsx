@@ -14,6 +14,7 @@ import { ChallengeSummary } from "@/components/challenge/challenge-summary";
 import { Button } from "@/components/ui/button";
 import { useChallengeAntiCapture } from "@/hooks/use-challenge-anti-capture";
 import { isTesterInvestorEmail } from "@/lib/admin/tester-allowlist";
+import { isLineupComplete, lineupIds } from "@/lib/disciplines/selection";
 import { useAppStore } from "@/store/useAppStore";
 import {
   buildEduBlastDotStates,
@@ -46,11 +47,21 @@ type SessionPhase = "playing" | "summary";
 
 export function ChallengeSession({ campaignLevel, onComplete, onQuit, onOpenPaywall }: ChallengeSessionProps) {
   const email = useAppStore((s) => s.email);
+  const disciplineLineup = useAppStore((s) => s.disciplineLineup);
   const antiCapturePreference = useAppStore((s) => s.antiCaptureEnabled);
-  const antiCaptureEnabled = isTesterInvestorEmail(email) ? antiCapturePreference : true;
-  const sessionSec = challengeSessionDurationSec();
+  // Freeze level/lineup for this run so win/fail progress sync cannot auto-restart a new test.
+  const [runLevel] = useState(campaignLevel);
+  const [runLineupIds] = useState(() =>
+    isLineupComplete(disciplineLineup) ? lineupIds(disciplineLineup) : null,
+  );
+  const sessionSec = challengeSessionDurationSec(runLevel);
   const perQuestionTotalSec = challengePerQuestionTotalSec();
-  const maxStrikes = challengeMaxStrikes(campaignLevel);
+  // Free zone (L1–L3): screenshots allowed. Proctored tiers may still use the preference.
+  const antiCaptureEnabled =
+    runLevel >= 4 &&
+    (isTesterInvestorEmail(email) ? antiCapturePreference : true);
+
+  const maxStrikes = challengeMaxStrikes(runLevel);
   const { readPhaseSec, optionsPhaseSec } = CHALLENGE_SPEC;
 
   const [questions, setQuestions] = useState<ChallengeQuestion[]>([]);
@@ -84,7 +95,7 @@ export function ChallengeSession({ campaignLevel, onComplete, onQuit, onOpenPayw
   const advanceAfterResultRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isAdvancingRef = useRef(false);
   const terminalAppliedRef = useRef(false);
-  const campaignLevelAtStartRef = useRef(campaignLevel);
+  const campaignLevelAtStartRef = useRef(runLevel);
 
   useEffect(() => {
     resultsRef.current = results;
@@ -100,9 +111,10 @@ export function ChallengeSession({ campaignLevel, onComplete, onQuit, onOpenPayw
     perQuestionLeftRef.current = perQuestionLeft;
   }, [perQuestionLeft]);
 
+  // Load exactly once for this page visit — never auto-restart when store level/lineup changes.
   useEffect(() => {
     let cancelled = false;
-    campaignLevelAtStartRef.current = campaignLevel;
+    campaignLevelAtStartRef.current = runLevel;
     setLoadingQuestions(true);
     setLoadError(null);
     setQuestions([]);
@@ -116,7 +128,7 @@ export function ChallengeSession({ campaignLevel, onComplete, onQuit, onOpenPayw
     sessionEndRef.current = false;
     terminalAppliedRef.current = false;
 
-    void loadDailyChallenge(campaignLevel)
+    void loadDailyChallenge(runLevel, runLineupIds)
       .then((built) => {
         if (cancelled) return;
         setQuestions(built);
@@ -135,7 +147,8 @@ export function ChallengeSession({ campaignLevel, onComplete, onQuit, onOpenPayw
     return () => {
       cancelled = true;
     };
-  }, [campaignLevel, sessionSec]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional mount-only load
+  }, []);
 
   const lockResultReviewFromRemaining = useCallback(() => {
     const ms = remainingOptionsReviewMs(perQuestionLeftRef.current, optionsPhaseSec);
@@ -154,8 +167,8 @@ export function ChallengeSession({ campaignLevel, onComplete, onQuit, onOpenPayw
     (reason: "strikes" | "time" | "finish") => {
       const correct = resultsRef.current.filter((r) => r.isCorrect).length;
       const misses = resultsRef.current.filter((r) => !r.isCorrect).length;
-      // Pass = finish the set without exceeding strikes (L1 allows 5 wrong/skips).
-      const passed = reason === "finish" && misses <= maxStrikes;
+      // Pass = finish the set with fewer than maxStrikes misses (L1: fail at 5/5).
+      const passed = reason === "finish" && misses < maxStrikes;
       setPhase("summary");
 
       let summary: ChallengeSummaryReason;
@@ -187,8 +200,8 @@ export function ChallengeSession({ campaignLevel, onComplete, onQuit, onOpenPayw
     if (phaseRef.current !== "playing") return;
     isAdvancingRef.current = false;
     const misses = resultsRef.current.filter((r) => !r.isCorrect).length;
-    // Fail only after exceeding the strike allowance (L1: 5 allowed → fail on 6th).
-    if (misses > maxStrikes) {
+    // Fail as soon as the strike limit is reached (L1: end at 5/5, not a 6th).
+    if (misses >= maxStrikes) {
       finalizeRun("strikes");
       return;
     }
@@ -377,7 +390,7 @@ export function ChallengeSession({ campaignLevel, onComplete, onQuit, onOpenPayw
     return (
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 text-muted-foreground">
         <div className="size-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-        <p className="text-sm">Loading Level {campaignLevel} questions…</p>
+        <p className="text-sm">Loading Level {runLevel} questions…</p>
       </div>
     );
   }
@@ -411,6 +424,7 @@ export function ChallengeSession({ campaignLevel, onComplete, onQuit, onOpenPayw
     );
   }
 
+
   if (!q) {
     return (
       <div className="flex min-h-0 flex-1 items-center justify-center text-muted-foreground">
@@ -422,7 +436,7 @@ export function ChallengeSession({ campaignLevel, onComplete, onQuit, onOpenPayw
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <ChallengeHud
-        campaignLevel={campaignLevel}
+        campaignLevel={runLevel}
         sessionLeft={sessionLeft}
         strikes={strikes}
         maxStrikes={maxStrikes}
