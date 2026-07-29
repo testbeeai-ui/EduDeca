@@ -2,14 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import {
-  formatEduBlastClock,
-  RESULT_FLASH_MS,
-} from "@/lib/challenge/meta";
+import { RESULT_FLASH_MS } from "@/lib/challenge/meta";
 import type { ChallengeQuestion } from "@/lib/types";
 import { cn } from "@/lib/utils";
-
-const RING_CIRCUMFERENCE = 138.2;
 
 export type ChallengeResultFlash = {
   type: "correct" | "wrong" | "skip";
@@ -48,9 +43,6 @@ export function ChallengeQuestionCard({
   questionTotal,
   subjectLabel,
   difficultyLabel,
-  secondsLeft,
-  readPhaseSec,
-  optionsPhaseSec,
   correctCount,
   wrongCount,
   skipCount,
@@ -68,7 +60,6 @@ export function ChallengeQuestionCard({
   resultPauseMs = RESULT_FLASH_MS,
 }: ChallengeQuestionCardProps) {
   const [localSelected, setLocalSelected] = useState<number | null>(null);
-  const [resultSecondsLeft, setResultSecondsLeft] = useState(0);
   const startTimeRef = useRef(Date.now());
   const autoAdvanceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -84,20 +75,6 @@ export function ChallengeQuestionCard({
       }
     };
   }, [question.id]);
-
-  useEffect(() => {
-    if (!answered) {
-      setResultSecondsLeft(0);
-      return;
-    }
-    const totalSec = Math.max(1, Math.ceil(resultPauseMs / 1000));
-    setResultSecondsLeft(totalSec);
-    const deadline = Date.now() + resultPauseMs;
-    const id = window.setInterval(() => {
-      setResultSecondsLeft(Math.max(0, Math.ceil((deadline - Date.now()) / 1000)));
-    }, 200);
-    return () => window.clearInterval(id);
-  }, [answered, resultPauseMs, question.id]);
 
   useEffect(() => {
     if (!answered || !onNext || disableAutoAdvance) return;
@@ -117,69 +94,14 @@ export function ChallengeQuestionCard({
   const correctIndex = question.correctIndex;
   const explanation = question.explanation?.trim() ?? "";
 
-  const displaySecondsLeft = answered ? resultSecondsLeft : secondsLeft;
-  const resultReviewSec = Math.max(1, Math.ceil(resultPauseMs / 1000));
-
-  const isReadPhase = !answered && displaySecondsLeft > optionsPhaseSec;
-  const isAnswerPhase =
-    !answered && displaySecondsLeft <= optionsPhaseSec && displaySecondsLeft > 0;
-  const isUrgent = isAnswerPhase && displaySecondsLeft <= 5;
-
-  const phaseBannerClass = answered
-    ? "read"
-    : isUrgent
-      ? "urgent"
-      : isReadPhase
-        ? "read"
-        : "answer";
-
-  const phaseLabel = answered
-    ? "RESULT"
-    : isUrgent
-      ? "ANSWER NOW"
-      : isReadPhase
-        ? "READ-ONLY PHASE"
-        : "ANSWER PHASE";
-
-  const untilChoicesSec = Math.max(0, displaySecondsLeft - optionsPhaseSec);
-  const phaseTimerDisplay = formatEduBlastClock(
-    answered ? displaySecondsLeft : isReadPhase ? untilChoicesSec : displaySecondsLeft
-  );
-  const phaseSub = answered
-    ? `${resultFlash?.message ?? "Recorded"}${displaySecondsLeft > 0 ? ` · ${displaySecondsLeft}s left` : ""}`
-    : isReadPhase
-      ? "Answer options unlock in"
-      : "Choose & confirm before time runs out";
-
-  const ringTotal = answered ? resultReviewSec : isReadPhase ? readPhaseSec : optionsPhaseSec;
-  const ringCurrent = answered
-    ? Math.max(0, displaySecondsLeft)
-    : isReadPhase
-      ? Math.max(0, displaySecondsLeft - optionsPhaseSec)
-      : Math.max(0, displaySecondsLeft);
-  const ringRatio = ringTotal > 0 ? Math.max(0, Math.min(1, ringCurrent / ringTotal)) : 0;
-  const ringOffset = RING_CIRCUMFERENCE * (1 - ringRatio);
-  const ringStroke = answered
-    ? "var(--ebc-teal)"
-    : isReadPhase
-      ? "var(--ebc-blue)"
-      : isUrgent
-        ? "var(--ebc-coral)"
-        : "var(--ebc-teal)";
-
-  const locked = isReadPhase || answered || disableInteraction;
-  const canSelect = isAnswerPhase && !answered && !disableInteraction;
+  const canSelect = !answered && !disableInteraction;
   const showReveal = answered;
   const pickedIndex = confirmedIndex ?? selectedIndex;
 
   const handleSelect = (i: number) => {
     if (!canSelect) return;
     setLocalSelected(i);
-  };
-
-  const handleConfirm = () => {
-    if (selectedIndex === null || answered || disableInteraction || isReadPhase) return;
-    onConfirm(selectedIndex, Date.now() - startTimeRef.current);
+    onConfirm(i, Date.now() - startTimeRef.current);
   };
 
   const handleSkipClick = () => {
@@ -187,20 +109,9 @@ export function ChallengeQuestionCard({
     onSkip();
   };
 
-  const confirmInactive =
-    !answered && (disableInteraction || isReadPhase || selectedIndex === null);
-
-  const canTapNext = answered && Boolean(onNext) && !disableInteraction;
-
   const confirmLabel = answered
-    ? canTapNext
-      ? "Tap Next to continue →"
-      : "Recorded"
-    : isReadPhase
-      ? `Options appear in ${untilChoicesSec}s…`
-      : selectedIndex === null
-        ? "Select an option to confirm"
-        : "Confirm answer →";
+    ? "Next Question →"
+    : "Select an option to answer";
 
   const resultFlashClass =
     resultFlash?.type === "correct"
@@ -240,36 +151,10 @@ export function ChallengeQuestionCard({
                 <div className="ebc-q-label">Question</div>
                 <p className="ebc-q-text">{question.stem}</p>
               </div>
-
-              <div className="ebc-ring-wrap">
-                <svg className="ebc-ring-svg" width="48" height="48" viewBox="0 0 56 56" aria-hidden>
-                  <circle className="ebc-ring-track" cx="28" cy="28" r="22" />
-                  <circle
-                    className="ebc-ring-fill"
-                    cx="28"
-                    cy="28"
-                    r="22"
-                    strokeDasharray={RING_CIRCUMFERENCE}
-                    strokeDashoffset={ringOffset}
-                    stroke={ringStroke}
-                  />
-                </svg>
-              </div>
             </div>
 
             <div className="ebc-right-col">
-              <div
-                className={cn("ebc-phase-banner", phaseBannerClass)}
-                role="status"
-                aria-live="polite"
-                aria-label={`${phaseLabel}. ${phaseTimerDisplay}. ${phaseSub}`}
-              >
-                <div className="ebc-phase-sub">{phaseSub}</div>
-                <div className="ebc-phase-timer">{phaseTimerDisplay}</div>
-                <div className="ebc-phase-label">{phaseLabel}</div>
-              </div>
-
-              <div className="ebc-options-area">
+              <div className="ebc-options-area mt-4">
                 {options.map((option, i) => {
                   const isSelected = !showReveal && selectedIndex === i;
                   const isCorrectPick =
@@ -284,10 +169,9 @@ export function ChallengeQuestionCard({
                       key={i}
                       type="button"
                       onClick={() => handleSelect(i)}
-                      disabled={locked && !showReveal}
+                      disabled={answered}
                       className={cn(
                         "ebc-option",
-                        locked && !showReveal && "locked",
                         canSelect && "available",
                         isSelected && "selected",
                         isCorrectPick && "correct",
@@ -297,11 +181,6 @@ export function ChallengeQuestionCard({
                     >
                       <div className="ebc-opt-num">{i + 1}</div>
                       <div className="ebc-opt-text min-w-0">{option}</div>
-                      {locked && !showReveal ? (
-                        <span className="ebc-opt-lock-icon" aria-hidden>
-                          🔒
-                        </span>
-                      ) : null}
                       <span className="ebc-opt-tick" aria-hidden>
                         ✓
                       </span>
@@ -334,9 +213,9 @@ export function ChallengeQuestionCard({
               </button>
               <button
                 type="button"
-                className={cn("ebc-btn-confirm", confirmInactive ? "inactive" : "active")}
-                onClick={canTapNext ? () => onNext?.() : handleConfirm}
-                disabled={canTapNext ? false : confirmInactive}
+                className={cn("ebc-btn-confirm", answered ? "active" : "inactive")}
+                onClick={() => onNext?.()}
+                disabled={!answered}
               >
                 <span>{confirmLabel}</span>
               </button>
@@ -365,3 +244,5 @@ export function ChallengeQuestionCard({
     </div>
   );
 }
+
+

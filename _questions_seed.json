@@ -1,8 +1,9 @@
 [
   {
-    "num": 1,
-    "discipline": "Physics",
+    "level": 1,
+    "sort_order": 1,
     "subject_id": "phy",
+    "discipline": "Physics",
     "stem": "Which instrument is used to measure electric current?",
     "options": [
       "Voltmeter",
@@ -10,125 +11,197 @@
       "Barometer",
       "Thermometer"
     ],
-    "level": 1,
     "correct_index": 1,
     "explanation": null,
-    "difficulty_rating": 3,
-    "sort_order": 1,
-    "id": "l1-phy"
+    "id": "l1-phy-01",
+    "difficulty_rating": 1,
+    "published": true
   },
   {
-    "num": 2,
-    "discipline": "Chemistry",
-    "subject_id": "che",
-    "stem": "Which of the following is a compound?",
-    "options": [
-      "Oxygen",
-      "Iron",
-      "Water",
-      "Nitrogen"
-    ],
     "level": 1,
-    "correct_index": 2,
-    "explanation": null,
-    "difficulty_rating": 3,
     "sort_order": 2,
-    "id": "l1-che"
-  },
-  {
-    "num": 3,
-    "discipline": "Mathematics",
-    "subject_id": "mat",
-    "stem": "What is the value of 8²?",
+    "subject_id": "che",
+    "discipline": "Chemistry",
+    "stem": "Which of the following is an element?",
     "options": [
-      "16",
-      "32",
-      "64",
-      "80"
+      "Water",
+      "Carbon dioxide",
+      "Oxygen",
+      "Common salt"
     ],
-    "level": 1,
     "correct_index": 2,
     "explanation": null,
-    "difficulty_rating": 3,
-    "sort_order": 3,
-    "id": "l1-mat"
+    "id": "l1-che-02",
+    "difficulty_rating": 1,
+    "published": true
   },
   {
-    "num": 4,
-    "discipline": "Biology",
+    "level": 1,
+    "sort_order": 3,
+    "subject_id": "mat",
+    "discipline": "Mathematics",
+    "stem": "What is the value of 7² − 5²?",
+    "options": [
+      "12",
+      "24",
+      "36",
+      "49"
+    ],
+    "correct_index": 1,
+    "explanation": null,
+    "id": "l1-mat-03",
+    "difficulty_rating": 1,
+    "published": true
+  },
+  {
+    "level": 1,
+    "sort_order": 4,
+    "subject_id": "amat",
+    "discipline": "Applied Mathematics",
+    "stem": "A shop sells 5 notebooks for ₹250. What is the cost of one notebook?",
+    "options": [
+      "₹40",
+      "₹45",
+      "₹50",
+      "₹55"
+    ],
+    "correct_index": 2,
+    "explanation": null,
+    "id": "l1-amat-04",
+    "difficulty_rating": 1,
+    "published": true
+  },
+  {
+    "level": 1,
+    "sort_order": 5,
     "subject_id": "bio",
+    "discipline": "Biology",
     "stem": "Which part of a plant mainly absorbs water from the soil?",
     "options": [
       "Flower",
       "Leaf",
-      "Stem",
-      "Root"
+      "Root",
+      "Fruit"
     ],
-    "level": 1,
-    "correct_index": 3,
+    "correct_index": 2,
     "explanation": null,
-    "difficulty_rating": 3,
-    "sort_order": 4,
-    "id": "l1-bio"
+    "id": "l1-bio-05",
+    "difficulty_rating": 1,
+    "published": true
   },
   {
-    "num": 5,
-    "discipline": "Verbal Abilities",
+    "level": 1,
+    "sort_order": 6,
+    "subject_id": "biotech",
+    "discipline": "Biotechnology",
+    "stem": "Which microorganism is commonly used in bread-making?",
+    "options": [
+      "Virus",
+      "Yeast",
+      "Algae",
+      "Protozoan"
+    ],
+    "correct_index": 1,
+    "explanation": null,
+    "id": "l1-biotech-06",
+    "difficulty_rating": 1,
+    "published": true
+  },
+  {
+    "level": 1,
+    "sort_order": 7,
+    "subject_id": "cs",
+    "discipline": "Computer Science and AI",
+    "stem": "Which of the following is an output device?",
+    "options": [
+      "Keyboard",
+      "Mouse",
+      "Monitor",
+      "Scanner"
+    ],
+    "correct_index": 2,
+    "explanation": null,
+    "id": "l1-cs-07",
+    "difficulty_rating": 1,
+    "published": true
+  },
+  {
+    "level": 1,
+    "sort_order": 8,
+    "subject_id": "ent",
+    "discipline": "Entrepreneurship",
+    "stem": "A person who starts and manages a new business is called:",
+    "options": [
+      "Consumer",
+      "Entrepreneur",
+      "Employee",
+      "Creditor"
+    ],
+    "correct_index": 1,
+    "explanation": null,
+    "id": "l1-ent-08",
+    "difficulty_rating": 1,
+    "published": true
+  },
+  {
+    "level": 1,
+    "sort_order": 9,
     "subject_id": "eng",
-    "stem": "Choose the word that is closest in meaning to rapid.",
+    "discipline": "Verbal Ability",
+    "stem": "Choose the word closest in meaning to “rapid.”",
     "options": [
       "Slow",
-      "Fast",
+      "Quick",
       "Weak",
       "Quiet"
     ],
-    "level": 1,
     "correct_index": 1,
     "explanation": null,
-    "difficulty_rating": 3,
-    "sort_order": 5,
-    "id": "l1-eng"
+    "id": "l1-eng-09",
+    "difficulty_rating": 1,
+    "published": true
   },
   {
-    "num": 6,
-    "discipline": "Quantitative Abilities",
+    "level": 1,
+    "sort_order": 10,
     "subject_id": "eco",
-    "stem": "A book costs ₹200. What is its price after a discount of ₹20?",
+    "discipline": "Quantitative Ability",
+    "stem": "What is 20% of 450?",
     "options": [
-      "₹160",
-      "₹180",
-      "₹200",
-      "₹220"
+      "45",
+      "75",
+      "90",
+      "100"
     ],
-    "level": 1,
-    "correct_index": 1,
-    "explanation": null,
-    "difficulty_rating": 3,
-    "sort_order": 7,
-    "id": "l1-eco"
-  },
-  {
-    "num": 7,
-    "discipline": "Analytical Abilities",
-    "subject_id": "log",
-    "stem": "All roses are flowers. Some flowers are red. Which statement is definitely true?",
-    "options": [
-      "All red things are roses",
-      "All flowers are roses",
-      "All roses are flowers",
-      "No rose is red"
-    ],
-    "level": 1,
     "correct_index": 2,
     "explanation": null,
-    "difficulty_rating": 3,
-    "sort_order": 10,
-    "id": "l1-log"
+    "id": "l1-eco-10",
+    "difficulty_rating": 1,
+    "published": true
   },
   {
-    "num": 8,
-    "discipline": "General Knowledge",
+    "level": 1,
+    "sort_order": 11,
+    "subject_id": "log",
+    "discipline": "Analytical Ability",
+    "stem": "Find the next number: 3, 6, 9, 12, ___",
+    "options": [
+      "13",
+      "14",
+      "15",
+      "16"
+    ],
+    "correct_index": 2,
+    "explanation": null,
+    "id": "l1-log-11",
+    "difficulty_rating": 1,
+    "published": true
+  },
+  {
+    "level": 1,
+    "sort_order": 12,
     "subject_id": "gk",
+    "discipline": "General Knowledge",
     "stem": "Which planet is known as the Red Planet?",
     "options": [
       "Venus",
@@ -136,407 +209,496 @@
       "Jupiter",
       "Mercury"
     ],
-    "level": 1,
     "correct_index": 1,
     "explanation": null,
-    "difficulty_rating": 3,
-    "sort_order": 9,
-    "id": "l1-gk"
+    "id": "l1-gk-12",
+    "difficulty_rating": 1,
+    "published": true
   },
   {
-    "num": 9,
-    "discipline": "Financial Literacy",
-    "subject_id": "fin",
-    "stem": "What is the amount deposited in a bank account called before interest is added?",
-    "options": [
-      "Principal",
-      "Profit",
-      "Tax",
-      "Dividend"
-    ],
     "level": 1,
+    "sort_order": 13,
+    "subject_id": "fin",
+    "discipline": "Financial Literacy",
+    "stem": "Which of the following is money kept aside for future use?",
+    "options": [
+      "Savings",
+      "Tax",
+      "Expense",
+      "Debt"
+    ],
     "correct_index": 0,
     "explanation": null,
-    "difficulty_rating": 3,
-    "sort_order": 8,
-    "id": "l1-fin"
+    "id": "l1-fin-13",
+    "difficulty_rating": 1,
+    "published": true
   },
   {
-    "num": 10,
-    "discipline": "AI and Computer Science",
-    "subject_id": "cs",
-    "stem": "Which of the following is an example of Artificial Intelligence?",
-    "options": [
-      "A wooden ruler",
-      "A calculator performing fixed arithmetic",
-      "A voice assistant understanding spoken commands",
-      "A notebook storing handwritten notes"
-    ],
-    "level": 1,
-    "correct_index": 2,
-    "explanation": null,
-    "difficulty_rating": 3,
-    "sort_order": 6,
-    "id": "l1-cs"
-  },
-  {
-    "num": 1,
-    "discipline": "Physics",
-    "subject_id": "phy",
-    "stem": "A car starts from rest and accelerates uniformly at 3 m s⁻² for 4 seconds. What is its final velocity?",
-    "options": [
-      "7 m s⁻¹",
-      "12 m s⁻¹",
-      "16 m s⁻¹",
-      "24 m s⁻¹"
-    ],
     "level": 2,
-    "correct_index": 1,
-    "explanation": "v = u + at = 0 + 3 × 4 = 12 m s⁻¹.",
-    "difficulty_rating": 5,
     "sort_order": 1,
-    "id": "l2-phy"
+    "subject_id": "phy",
+    "discipline": "Physics",
+    "stem": "A body starts from rest and accelerates uniformly at 2 m s⁻² for 5 seconds. What is its final velocity?",
+    "options": [
+      "5 m s⁻¹",
+      "7 m s⁻¹",
+      "10 m s⁻¹",
+      "20 m s⁻¹"
+    ],
+    "correct_index": 2,
+    "explanation": "v = u + at = 0 + 2 × 5.",
+    "id": "l2-phy-01",
+    "difficulty_rating": 2,
+    "published": true
   },
   {
-    "num": 2,
-    "discipline": "Chemistry",
-    "subject_id": "che",
-    "stem": "Which element has the electronic configuration 2, 8, 7?",
-    "options": [
-      "Oxygen",
-      "Fluorine",
-      "Chlorine",
-      "Argon"
-    ],
     "level": 2,
-    "correct_index": 2,
-    "explanation": "Chlorine has 17 electrons arranged as 2, 8, 7.",
-    "difficulty_rating": 5,
     "sort_order": 2,
-    "id": "l2-che"
+    "subject_id": "che",
+    "discipline": "Chemistry",
+    "stem": "Which type of bond is formed when electrons are transferred from one atom to another?",
+    "options": [
+      "Covalent bond",
+      "Ionic bond",
+      "Hydrogen bond",
+      "Metallic bond"
+    ],
+    "correct_index": 1,
+    "explanation": "Ionic bonding involves electron transfer.",
+    "id": "l2-che-02",
+    "difficulty_rating": 2,
+    "published": true
   },
   {
-    "num": 3,
-    "discipline": "Mathematics",
-    "subject_id": "mat",
-    "stem": "If x² − 7x + 12 = 0, what are the values of x?",
-    "options": [
-      "2 and 6",
-      "3 and 4",
-      "−3 and −4",
-      "1 and 12"
-    ],
     "level": 2,
-    "correct_index": 1,
-    "explanation": "x² − 7x + 12 = (x − 3)(x − 4).",
-    "difficulty_rating": 5,
     "sort_order": 3,
-    "id": "l2-mat"
-  },
-  {
-    "num": 4,
-    "discipline": "Biology",
-    "subject_id": "bio",
-    "stem": "Which process produces genetically different daughter cells?",
+    "subject_id": "mat",
+    "discipline": "Mathematics",
+    "stem": "If 2x + 7 = 19, what is the value of x?",
     "options": [
-      "Binary fission",
-      "Mitosis",
-      "Meiosis",
-      "Budding"
+      "5",
+      "6",
+      "7",
+      "13"
     ],
-    "level": 2,
-    "correct_index": 2,
-    "explanation": "Meiosis produces variation through recombination and chromosome separation.",
-    "difficulty_rating": 5,
-    "sort_order": 4,
-    "id": "l2-bio"
-  },
-  {
-    "num": 5,
-    "discipline": "Verbal Abilities",
-    "subject_id": "eng",
-    "stem": "Choose the word that is closest in meaning to “meticulous.”",
-    "options": [
-      "Careless",
-      "Thorough",
-      "Rapid",
-      "Uncertain"
-    ],
-    "level": 2,
     "correct_index": 1,
-    "explanation": "Meticulous means very careful, accurate and attentive to detail.",
-    "difficulty_rating": 5,
+    "explanation": "2x = 12, so x = 6.",
+    "id": "l2-mat-03",
+    "difficulty_rating": 2,
+    "published": true
+  },
+  {
+    "level": 2,
+    "sort_order": 4,
+    "subject_id": "amat",
+    "discipline": "Applied Mathematics",
+    "stem": "A taxi charges a fixed amount of ₹50 plus ₹12 per kilometre. What is the total fare for an 8 km journey?",
+    "options": [
+      "₹96",
+      "₹126",
+      "₹146",
+      "₹156"
+    ],
+    "correct_index": 2,
+    "explanation": "Fare = 50 + 12 × 8.",
+    "id": "l2-amat-04",
+    "difficulty_rating": 2,
+    "published": true
+  },
+  {
+    "level": 2,
     "sort_order": 5,
-    "id": "l2-eng"
+    "subject_id": "bio",
+    "discipline": "Biology",
+    "stem": "Which cell organelle controls most cellular activities and contains genetic material?",
+    "options": [
+      "Vacuole",
+      "Nucleus",
+      "Ribosome",
+      "Lysosome"
+    ],
+    "correct_index": 1,
+    "explanation": "It contains DNA and controls cell activities.",
+    "id": "l2-bio-05",
+    "difficulty_rating": 2,
+    "published": true
   },
   {
-    "num": 6,
-    "discipline": "Quantitative Abilities",
-    "subject_id": "eco",
-    "stem": "A product marked at ₹2,000 is sold at a discount of 15%. What is its selling price?",
-    "options": [
-      "₹1,600",
-      "₹1,650",
-      "₹1,700",
-      "₹1,750"
-    ],
     "level": 2,
+    "sort_order": 6,
+    "subject_id": "biotech",
+    "discipline": "Biotechnology",
+    "stem": "Which technique is used to produce many copies of a specific DNA segment?",
+    "options": [
+      "Fermentation",
+      "Centrifugation",
+      "Polymerase chain reaction",
+      "Chromatography"
+    ],
     "correct_index": 2,
-    "explanation": "Discount = 15% of ₹2,000 = ₹300; selling price = ₹1,700.",
-    "difficulty_rating": 5,
+    "explanation": "PCR amplifies a selected DNA region.",
+    "id": "l2-biotech-06",
+    "difficulty_rating": 2,
+    "published": true
+  },
+  {
+    "level": 2,
     "sort_order": 7,
-    "id": "l2-eco"
+    "subject_id": "cs",
+    "discipline": "Computer Science and AI",
+    "stem": "What is the main purpose of an algorithm?",
+    "options": [
+      "To decorate a computer screen",
+      "To provide step-by-step instructions for solving a problem",
+      "To increase the physical memory of a computer",
+      "To connect a printer to the internet"
+    ],
+    "correct_index": 1,
+    "explanation": "An algorithm is a logical sequence of instructions.",
+    "id": "l2-cs-07",
+    "difficulty_rating": 2,
+    "published": true
   },
   {
-    "num": 7,
-    "discipline": "Analytical Abilities",
-    "subject_id": "log",
-    "stem": "All engineers are graduates. Some graduates are musicians. Which conclusion definitely follows?",
-    "options": [
-      "All musicians are engineers.",
-      "Some engineers are musicians.",
-      "All graduates are engineers.",
-      "Engineers are graduates."
-    ],
     "level": 2,
-    "correct_index": 3,
-    "explanation": "This directly follows from the statement that all engineers are graduates.",
-    "difficulty_rating": 5,
-    "sort_order": 10,
-    "id": "l2-log"
+    "sort_order": 8,
+    "subject_id": "ent",
+    "discipline": "Entrepreneurship",
+    "stem": "What is a target market?",
+    "options": [
+      "Every person in a country",
+      "The group of customers a business aims to serve",
+      "Only the employees of a business",
+      "The competitors of a business"
+    ],
+    "correct_index": 1,
+    "explanation": "It is the intended customer group.",
+    "id": "l2-ent-08",
+    "difficulty_rating": 2,
+    "published": true
   },
   {
-    "num": 8,
-    "discipline": "General Knowledge",
-    "subject_id": "gk",
-    "stem": "Which Indian space mission successfully landed near the Moon’s south polar region in August 2023?",
-    "options": [
-      "Chandrayaan-1",
-      "Chandrayaan-2",
-      "Chandrayaan-3",
-      "Mangalyaan"
-    ],
     "level": 2,
-    "correct_index": 2,
-    "explanation": "Chandrayaan-3 achieved a successful soft landing near the lunar south polar region.",
-    "difficulty_rating": 5,
     "sort_order": 9,
-    "id": "l2-gk"
+    "subject_id": "eng",
+    "discipline": "Verbal Ability",
+    "stem": "Choose the sentence with correct subject–verb agreement.",
+    "options": [
+      "The list of items are on the table.",
+      "The list of items is on the table.",
+      "The lists of item is on the table.",
+      "The list of item were on the table."
+    ],
+    "correct_index": 1,
+    "explanation": "The subject “list” is singular.",
+    "id": "l2-eng-09",
+    "difficulty_rating": 2,
+    "published": true
   },
   {
-    "num": 9,
-    "discipline": "Financial Literacy",
+    "level": 2,
+    "sort_order": 10,
+    "subject_id": "eco",
+    "discipline": "Quantitative Ability",
+    "stem": "A shirt marked at ₹1,200 is sold at a discount of 15%. What is its selling price?",
+    "options": [
+      "₹960",
+      "₹1,000",
+      "₹1,020",
+      "₹1,080"
+    ],
+    "correct_index": 2,
+    "explanation": "Discount = ₹180; price = ₹1,020.",
+    "id": "l2-eco-10",
+    "difficulty_rating": 2,
+    "published": true
+  },
+  {
+    "level": 2,
+    "sort_order": 11,
+    "subject_id": "log",
+    "discipline": "Analytical Ability",
+    "stem": "All roses are flowers. Some flowers fade quickly. Which conclusion definitely follows?",
+    "options": [
+      "All roses fade quickly.",
+      "Some roses are not flowers.",
+      "Roses are flowers.",
+      "No flower is a rose."
+    ],
+    "correct_index": 2,
+    "explanation": "This directly follows from the statement.",
+    "id": "l2-log-11",
+    "difficulty_rating": 2,
+    "published": true
+  },
+  {
+    "level": 2,
+    "sort_order": 12,
+    "subject_id": "gk",
+    "discipline": "General Knowledge",
+    "stem": "Which organ of the United Nations is primarily responsible for maintaining international peace and security?",
+    "options": [
+      "General Assembly",
+      "Security Council",
+      "International Court of Justice",
+      "Secretariat"
+    ],
+    "correct_index": 1,
+    "explanation": "It has primary responsibility for international peace and security.",
+    "id": "l2-gk-12",
+    "difficulty_rating": 2,
+    "published": true
+  },
+  {
+    "level": 2,
+    "sort_order": 13,
     "subject_id": "fin",
-    "stem": "An investment earns 8% simple interest per year. What interest will be earned on ₹10,000 in 2 years?",
+    "discipline": "Financial Literacy",
+    "stem": "₹10,000 is invested at 8% simple interest per annum for 2 years. What interest is earned?",
     "options": [
       "₹800",
       "₹1,200",
       "₹1,600",
       "₹1,800"
     ],
-    "level": 2,
     "correct_index": 2,
-    "explanation": "SI = PRT/100 = 10,000 × 8 × 2 ÷ 100 = ₹1,600.",
-    "difficulty_rating": 5,
-    "sort_order": 8,
-    "id": "l2-fin"
+    "explanation": "SI = PRT/100 = 10,000 × 8 × 2/100.",
+    "id": "l2-fin-13",
+    "difficulty_rating": 2,
+    "published": true
   },
   {
-    "num": 10,
-    "discipline": "AI and Computer Science",
-    "subject_id": "cs",
-    "stem": "In machine learning, what is a training dataset primarily used for?",
-    "options": [
-      "To permanently store the software",
-      "To teach a model to recognise patterns",
-      "To increase internet speed",
-      "To encrypt computer files"
-    ],
-    "level": 2,
-    "correct_index": 1,
-    "explanation": "Training data helps an AI model learn relationships and make predictions.",
-    "difficulty_rating": 5,
-    "sort_order": 6,
-    "id": "l2-cs"
-  },
-  {
-    "num": 1,
-    "discipline": "Physics",
+    "level": 3,
+    "sort_order": 1,
     "subject_id": "phy",
-    "stem": "A 2 kg block moving at 6 m s⁻¹ collides with a stationary 4 kg block. They stick together after the collision. What is their common velocity?",
+    "discipline": "Physics",
+    "stem": "A 3 kg body moving at 8 m s⁻¹ collides with a stationary 5 kg body. They stick together after collision. What is their common velocity?",
     "options": [
-      "1 m s⁻¹",
       "2 m s⁻¹",
       "3 m s⁻¹",
-      "4 m s⁻¹"
+      "4 m s⁻¹",
+      "5 m s⁻¹"
     ],
-    "level": 3,
     "correct_index": 1,
-    "explanation": "Conservation of momentum: (2 × 6) + (4 × 0) = (2 + 4)v. Therefore, 12 = 6v, so v = 2 m s⁻¹.",
-    "difficulty_rating": 7,
-    "sort_order": 1,
-    "id": "l3-phy"
+    "explanation": "Momentum conservation: 3 × 8 = (3 + 5)v, so v = 3.",
+    "id": "l3-phy-01",
+    "difficulty_rating": 3,
+    "published": true
   },
   {
-    "num": 2,
-    "discipline": "Chemistry",
-    "subject_id": "che",
-    "stem": "For the equilibrium:\nN₂(g) + 3H₂(g) ⇌ 2NH₃(g) + heat\nWhich change will increase the equilibrium yield of ammonia?",
-    "options": [
-      "Increasing temperature and decreasing pressure",
-      "Decreasing temperature and increasing pressure",
-      "Increasing temperature and increasing volume",
-      "Adding more ammonia"
-    ],
     "level": 3,
-    "correct_index": 1,
-    "explanation": "The forward reaction is exothermic and produces fewer gas molecules. Lower temperature and higher pressure favour ammonia formation.",
-    "difficulty_rating": 7,
     "sort_order": 2,
-    "id": "l3-che"
-  },
-  {
-    "num": 3,
-    "discipline": "Mathematics",
-    "subject_id": "mat",
-    "stem": "If the roots of the equation x² − 8x + k = 0 differ by 4, what is the value of k?",
+    "subject_id": "che",
+    "discipline": "Chemistry",
+    "stem": "For the equilibrium: N₂(g) + 3H₂(g) ⇌ 2NH₃(g) Which change favours the formation of ammonia?",
     "options": [
-      "8",
-      "12",
-      "16",
-      "20"
+      "Decreasing pressure",
+      "Increasing volume",
+      "Increasing pressure",
+      "Adding ammonia"
     ],
-    "level": 3,
-    "correct_index": 1,
-    "explanation": "If roots are α and β, then α + β = 8 and α − β = 4. Using (α − β)² = (α + β)² − 4αβ: 16 = 64 − 4k, giving k = 12.",
-    "difficulty_rating": 7,
-    "sort_order": 3,
-    "id": "l3-mat"
-  },
-  {
-    "num": 4,
-    "discipline": "Biology",
-    "subject_id": "bio",
-    "stem": "A heterozygous tall pea plant is crossed with a dwarf pea plant. If tallness is dominant, what percentage of the offspring is expected to be dwarf?",
-    "options": [
-      "0%",
-      "25%",
-      "50%",
-      "75%"
-    ],
-    "level": 3,
     "correct_index": 2,
-    "explanation": "The cross is Tt × tt. The offspring are 50% Tt, which are tall, and 50% tt, which are dwarf.",
-    "difficulty_rating": 7,
+    "explanation": "The product side has fewer moles of gas.",
+    "id": "l3-che-02",
+    "difficulty_rating": 3,
+    "published": true
+  },
+  {
+    "level": 3,
+    "sort_order": 3,
+    "subject_id": "mat",
+    "discipline": "Mathematics",
+    "stem": "If the roots of x² − 9x + k = 0 are 4 and 5, what is the value of k?",
+    "options": [
+      "9",
+      "16",
+      "20",
+      "25"
+    ],
+    "correct_index": 2,
+    "explanation": "Product of roots = k = 4 × 5.",
+    "id": "l3-mat-03",
+    "difficulty_rating": 3,
+    "published": true
+  },
+  {
+    "level": 3,
     "sort_order": 4,
-    "id": "l3-bio"
+    "subject_id": "amat",
+    "discipline": "Applied Mathematics",
+    "stem": "The demand for a product is represented by: D = 500 − 20P where D is demand and P is price in rupees. What is the demand when the price is ₹15?",
+    "options": [
+      "100 units",
+      "200 units",
+      "300 units",
+      "400 units"
+    ],
+    "correct_index": 1,
+    "explanation": "D = 500 − 20 × 15 = 200.",
+    "id": "l3-amat-04",
+    "difficulty_rating": 3,
+    "published": true
   },
   {
-    "num": 5,
-    "discipline": "Verbal Abilities",
-    "subject_id": "eng",
-    "stem": "Choose the sentence that uses the word “ambiguous” correctly.",
-    "options": [
-      "The instructions were ambiguous, so every student understood them immediately.",
-      "His ambiguous reply could be interpreted in more than one way.",
-      "The answer was ambiguous because it was completely accurate.",
-      "The scientist made an ambiguous measurement using a calibrated instrument."
-    ],
     "level": 3,
-    "correct_index": 1,
-    "explanation": "Ambiguous means unclear or capable of more than one interpretation.",
-    "difficulty_rating": 7,
     "sort_order": 5,
-    "id": "l3-eng"
-  },
-  {
-    "num": 6,
-    "discipline": "Quantitative Abilities",
-    "subject_id": "eco",
-    "stem": "A train travels the first half of a journey at 40 km h⁻¹ and the second half at 60 km h⁻¹. What is its average speed for the entire journey?",
+    "subject_id": "bio",
+    "discipline": "Biology",
+    "stem": "A heterozygous tall pea plant, Tt, is crossed with another heterozygous tall plant, Tt. What is the probability of obtaining a dwarf plant?",
     "options": [
-      "45 km h⁻¹",
-      "48 km h⁻¹",
-      "50 km h⁻¹",
-      "52 km h⁻¹"
+      "1/4",
+      "1/2",
+      "3/4",
+      "1"
     ],
-    "level": 3,
-    "correct_index": 1,
-    "explanation": "For equal distances, average speed = 2ab ÷ (a + b) = 2 × 40 × 60 ÷ 100 = 48 km h⁻¹.",
-    "difficulty_rating": 7,
-    "sort_order": 7,
-    "id": "l3-eco"
+    "correct_index": 0,
+    "explanation": "Tt × Tt gives TT, Tt, Tt and tt.",
+    "id": "l3-bio-05",
+    "difficulty_rating": 3,
+    "published": true
   },
   {
-    "num": 7,
-    "discipline": "Analytical Abilities",
+    "level": 3,
+    "sort_order": 6,
+    "subject_id": "biotech",
+    "discipline": "Biotechnology",
+    "stem": "A bacterial plasmid used to carry a foreign gene into a host cell is called:",
+    "options": [
+      "Antibody",
+      "Vector",
+      "Enzyme",
+      "Hormone"
+    ],
+    "correct_index": 1,
+    "explanation": "A plasmid vector transfers foreign DNA.",
+    "id": "l3-biotech-06",
+    "difficulty_rating": 3,
+    "published": true
+  },
+  {
+    "level": 3,
+    "sort_order": 7,
+    "subject_id": "cs",
+    "discipline": "Computer Science and AI",
+    "stem": "An AI model performs extremely well on its training data but poorly on new data. This is known as:",
+    "options": [
+      "Encryption",
+      "Overfitting",
+      "Compilation",
+      "Compression"
+    ],
+    "correct_index": 1,
+    "explanation": "The model memorises training patterns and fails to generalise.",
+    "id": "l3-cs-07",
+    "difficulty_rating": 3,
+    "published": true
+  },
+  {
+    "level": 3,
+    "sort_order": 8,
+    "subject_id": "ent",
+    "discipline": "Entrepreneurship",
+    "stem": "A startup has monthly fixed costs of ₹60,000 and earns a contribution of ₹300 per product sold. How many products must it sell to reach the break-even point?",
+    "options": [
+      "100",
+      "150",
+      "200",
+      "300"
+    ],
+    "correct_index": 2,
+    "explanation": "Break-even units = 60,000/300.",
+    "id": "l3-ent-08",
+    "difficulty_rating": 3,
+    "published": true
+  },
+  {
+    "level": 3,
+    "sort_order": 9,
+    "subject_id": "eng",
+    "discipline": "Verbal Ability",
+    "stem": "Read the statement: The school introduced both additional revision classes and weekly mock tests. Examination results improved. The principal concluded that the mock tests alone caused the improvement. Which is the best evaluation?",
+    "options": [
+      "The conclusion is certain because results improved.",
+      "Revision classes may also have contributed to the improvement.",
+      "Mock tests cannot improve performance.",
+      "Results always improve when two changes are introduced."
+    ],
+    "correct_index": 1,
+    "explanation": "Two interventions occurred, so causation cannot be assigned to one alone.",
+    "id": "l3-eng-09",
+    "difficulty_rating": 3,
+    "published": true
+  },
+  {
+    "level": 3,
+    "sort_order": 10,
+    "subject_id": "eco",
+    "discipline": "Quantitative Ability",
+    "stem": "A train travels half the distance at 50 km h⁻¹ and the remaining half at 75 km h⁻¹. What is its average speed?",
+    "options": [
+      "60 km h⁻¹",
+      "62.5 km h⁻¹",
+      "65 km h⁻¹",
+      "70 km h⁻¹"
+    ],
+    "correct_index": 0,
+    "explanation": "For equal distances, average speed = 2ab/(a + b).",
+    "id": "l3-eco-10",
+    "difficulty_rating": 3,
+    "published": true
+  },
+  {
+    "level": 3,
+    "sort_order": 11,
     "subject_id": "log",
-    "stem": "Five students—P, Q, R, S and T—stand in a line.\nQ is immediately to the right of P.\nR is at one end.\nS is not next to R.\nT is to the left of S.\nWhich arrangement is possible?",
+    "discipline": "Analytical Ability",
+    "stem": "Five people—P, Q, R, S and T—stand in a line. Q stands immediately to the right of P. R stands at one end. T stands to the left of S. S does not stand next to R. Which arrangement is possible?",
     "options": [
       "R, P, Q, T, S",
       "P, Q, S, T, R",
       "T, S, R, P, Q",
-      "R, T, P, Q, S"
+      "R, T, S, Q, P"
     ],
-    "level": 3,
     "correct_index": 0,
-    "explanation": "Q is immediately right of P, R is at an end, S is not next to R, and T is left of S. Only option A satisfies all conditions.",
-    "difficulty_rating": 7,
-    "sort_order": 10,
-    "id": "l3-log"
+    "explanation": "It satisfies all four placement conditions.",
+    "id": "l3-log-11",
+    "difficulty_rating": 3,
+    "published": true
   },
   {
-    "num": 8,
-    "discipline": "General Knowledge",
+    "level": 3,
+    "sort_order": 12,
     "subject_id": "gk",
-    "stem": "Which scientific development is most directly associated with the work of S. N. Bose?",
+    "discipline": "General Knowledge",
+    "stem": "Which scientific principle explains why a satellite remains in orbit around Earth?",
     "options": [
-      "Discovery of electromagnetic induction",
-      "Bose–Einstein statistics",
-      "Development of the Raman effect",
-      "Formulation of the uncertainty principle"
+      "Conservation of electric charge",
+      "Gravity provides the centripetal force",
+      "Atmospheric pressure supports the satellite",
+      "Magnetic attraction balances its weight"
     ],
-    "level": 3,
     "correct_index": 1,
-    "explanation": "S. N. Bose developed the statistical method later extended by Albert Einstein, leading to Bose–Einstein statistics.",
-    "difficulty_rating": 7,
-    "sort_order": 9,
-    "id": "l3-gk"
+    "explanation": "Gravity supplies the inward centripetal force.",
+    "id": "l3-gk-12",
+    "difficulty_rating": 3,
+    "published": true
   },
   {
-    "num": 9,
-    "discipline": "Financial Literacy",
+    "level": 3,
+    "sort_order": 13,
     "subject_id": "fin",
-    "stem": "An investor deposits ₹20,000 at 10% annual compound interest, compounded annually. What will be the amount after 2 years?",
+    "discipline": "Financial Literacy",
+    "stem": "A portfolio contains: 60% invested in an asset earning 10% 40% invested in an asset earning 5% What is the total portfolio return?",
     "options": [
-      "₹22,000",
-      "₹24,000",
-      "₹24,200",
-      "₹26,000"
+      "6%",
+      "7%",
+      "8%",
+      "9%"
     ],
-    "level": 3,
     "correct_index": 2,
-    "explanation": "Amount = 20,000 × (1.10)² = 20,000 × 1.21 = ₹24,200.",
-    "difficulty_rating": 7,
-    "sort_order": 8,
-    "id": "l3-fin"
-  },
-  {
-    "num": 10,
-    "discipline": "AI and Computer Science",
-    "subject_id": "cs",
-    "stem": "A machine-learning model performs extremely well on training data but poorly on new, unseen data. This problem is called:",
-    "options": [
-      "Encryption",
-      "Overfitting",
-      "Compression",
-      "Normalisation"
-    ],
-    "level": 3,
-    "correct_index": 1,
-    "explanation": "Overfitting occurs when a model learns training data too closely, including noise, and fails to generalise to new data.",
-    "difficulty_rating": 7,
-    "sort_order": 6,
-    "id": "l3-cs"
+    "explanation": "Weighted return = 0.60 × 10% + 0.40 × 5%.",
+    "id": "l3-fin-13",
+    "difficulty_rating": 3,
+    "published": true
   }
 ]

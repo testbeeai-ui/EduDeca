@@ -30,7 +30,8 @@ export function normalizeSubjectLevels(
   return floorSubjectLevels(base, campaignLevel);
 }
 
-/** Win on today's IST date locks the daily challenge. */
+/** Win on today's IST date locks the daily challenge until tomorrow (IST).
+ * Admins can clear this via Skip wait. */
 export function withTodayLock(progress: EduDecaProgress, today = istDateKey()): EduDecaProgress {
   return {
     ...progress,
@@ -70,8 +71,10 @@ export function applyChallengeToProgress(
       nextStreak =
         state.lastChallengeDate === istYesterdayKey() ? state.streakDays + 1 : 1;
     }
-    nextTodayCompleted = true;
     nextLastChallengeDate = today;
+    // Lock until tomorrow (IST). Next level is unlocked but not playable yet —
+    // except admins via Skip wait.
+    nextTodayCompleted = true;
     if (state.campaignLevel < 3) {
       nextCampaignLevel = state.campaignLevel + 1;
     } else if (state.campaignLevel === 3) {
@@ -81,6 +84,7 @@ export function applyChallengeToProgress(
     }
     nextSubjectLevels = floorSubjectLevels(nextSubjectLevels, nextCampaignLevel);
   }
+
 
   return {
     ...state,

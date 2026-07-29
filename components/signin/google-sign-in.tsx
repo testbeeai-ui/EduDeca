@@ -4,7 +4,10 @@ import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { WALKTHROUGH_DISCIPLINES_STEP } from "@/data/walkthrough";
+import { isLineupComplete } from "@/lib/disciplines/selection";
 import { supabase } from "@/lib/supabase/client";
+import { useAppStore } from "@/store/useAppStore";
 
 const AUTH_NEXT_COOKIE = "edudeca_auth_next";
 
@@ -38,6 +41,8 @@ function GoogleMark({ className }: { className?: string }) {
 
 export function GoogleSignInForm({ title, description }: GoogleSignInFormProps) {
   const searchParams = useSearchParams();
+  const disciplineLineup = useAppStore((s) => s.disciplineLineup);
+  const setWalkthroughStep = useAppStore((s) => s.setWalkthroughStep);
   const [signingIn, setSigningIn] = useState(false);
   const [error, setError] = useState<string | null>(() => {
     const authError = searchParams.get("auth_error");
@@ -48,6 +53,12 @@ export function GoogleSignInForm({ title, description }: GoogleSignInFormProps) 
   });
 
   const handleGoogleSignIn = async () => {
+    if (!isLineupComplete(disciplineLineup)) {
+      setError("Choose all 10 Decathlon disciplines first, then continue with Google.");
+      setWalkthroughStep(WALKTHROUGH_DISCIPLINES_STEP);
+      return;
+    }
+
     setSigningIn(true);
     setError(null);
 
@@ -59,10 +70,10 @@ export function GoogleSignInForm({ title, description }: GoogleSignInFormProps) 
         return;
       }
 
-      const redirectPath = searchParams.get("redirect") || "/home";
-      document.cookie = `${AUTH_NEXT_COOKIE}=${encodeURIComponent(redirectPath)}; path=/; max-age=600; SameSite=Lax`;
+      // Always land on the homepage after signup/sign-in — start the
+      // challenge from Home via "Start Today's Challenge", not OAuth return.
+      document.cookie = `${AUTH_NEXT_COOKIE}=${encodeURIComponent("/home")}; path=/; max-age=600; SameSite=Lax`;
 
-      // Exact path only — query strings often fail the Supabase redirect allowlist.
       const redirectTo = `${origin}/auth/callback`;
       const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: "google",

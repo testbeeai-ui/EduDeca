@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { ChallengeSession } from "@/components/challenge/challenge-session";
@@ -9,7 +9,6 @@ import { EduDecaLogo } from "@/components/shell/edudeca-logo";
 import { isTesterInvestorEmail } from "@/lib/admin/tester-allowlist";
 import { saveChallengeAttempt } from "@/lib/challenge/load-daily-challenge";
 import { challengeMaxStrikes } from "@/lib/challenge/spec";
-import { postTesterAction } from "@/lib/progress/client";
 import type { ChallengeCompletePayload } from "@/lib/types";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -21,29 +20,23 @@ export default function ChallengePage() {
   const todayCompleted = useAppStore((s) => s.todayCompleted);
   const applyChallengeResult = useAppStore((s) => s.applyChallengeResult);
   const setProctoredPaid = useAppStore((s) => s.setProctoredPaid);
-  const skipDailyWait = useAppStore((s) => s.skipDailyWait);
   const hydrateProgress = useAppStore((s) => s.hydrateProgress);
   const antiCapturePreference = useAppStore((s) => s.antiCaptureEnabled);
 
+  // Freeze the level for this visit so winning L1 cannot auto-boot L2 on this page.
+  const [runLevel] = useState(campaignLevel);
   const [paywallOpen, setPaywallOpen] = useState(
     () => campaignLevel >= 4 && !isProctoredPaid
   );
   const [started, setStarted] = useState(false);
 
   const isTester = isTesterInvestorEmail(email);
-  const antiCaptureEnabled = isTester ? antiCapturePreference : true;
+  const antiCaptureEnabled =
+    runLevel >= 4 && (isTester ? antiCapturePreference : true);
   const blocked = campaignLevel >= 4 && !isProctoredPaid;
   const completedToday = todayCompleted && !blocked && !isTester;
-  const maxStrikes = challengeMaxStrikes(campaignLevel);
+  const maxStrikes = challengeMaxStrikes(runLevel);
 
-  useEffect(() => {
-    if (isTester && todayCompleted && !blocked) {
-      skipDailyWait();
-      void postTesterAction({ action: "skip_wait" }).then((progress) => {
-        if (progress) hydrateProgress(progress);
-      });
-    }
-  }, [isTester, todayCompleted, blocked, skipDailyWait, hydrateProgress]);
 
   const handleComplete = useCallback(
     (payload: ChallengeCompletePayload) => {
@@ -133,15 +126,14 @@ export default function ChallengePage() {
               Daily Challenge
             </p>
             <p className="text-[11px] text-muted-foreground sm:text-xs">
-              10 questions · 1 per discipline · {maxStrikes} strikes ·{" "}
-              {antiCaptureEnabled ? "Screenshots blocked · " : ""}
-              finish to pass
+              10 questions · 1 per discipline · {maxStrikes} strikes
+              {antiCaptureEnabled ? " · Screenshots blocked" : ""} · finish to pass
             </p>
           </div>
         </header>
 
         <ChallengeSession
-          campaignLevel={campaignLevel}
+          campaignLevel={runLevel}
           onComplete={handleComplete}
           onQuit={() => router.push("/home")}
           onOpenPaywall={() => setPaywallOpen(true)}

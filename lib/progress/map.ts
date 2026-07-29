@@ -7,10 +7,10 @@ export function rowToProgress(row: EduDecaProgressRow | null | undefined): EduDe
   if (!row) return defaultEduDecaProgress();
 
   const campaignLevel = Math.min(10, Math.max(1, row.campaign_level ?? 1));
+  const today = istDateKey();
   const lastChallengeDate = row.last_challenge_date
     ? String(row.last_challenge_date).slice(0, 10)
     : null;
-  const today = istDateKey();
 
   return {
     campaignLevel,
@@ -21,7 +21,8 @@ export function rowToProgress(row: EduDecaProgressRow | null | undefined): EduDe
     freeZoneComplete: Boolean(row.free_zone_complete),
     lastChallengeDate,
     todayCompleted: lastChallengeDate === today,
-    antiCaptureEnabled: row.anti_capture_enabled !== false,
+    antiCaptureEnabled: row.anti_capture_enabled === true,
+    disciplines: Array.isArray(row.disciplines) ? row.disciplines.map(String) : null,
   };
 }
 
@@ -36,5 +37,6 @@ export function progressToRow(userId: string, progress: EduDecaProgress) {
     free_zone_complete: progress.freeZoneComplete,
     last_challenge_date: progress.lastChallengeDate,
     anti_capture_enabled: progress.antiCaptureEnabled,
+    disciplines: progress.disciplines ?? null,
   };
 }

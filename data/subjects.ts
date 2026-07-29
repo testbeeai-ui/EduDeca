@@ -1,14 +1,16 @@
+import { DISCIPLINES, type DisciplineId } from "@/data/disciplines";
 import type { Subject } from "@/lib/types";
 
-export const subjects: Subject[] = [
-  { id: "phy", name: "Physics", abbrev: "PHY", level: 1, accent: "blue" },
-  { id: "che", name: "Chemistry", abbrev: "CHE", level: 1, accent: "teal" },
-  { id: "mat", name: "Maths", abbrev: "MAT", level: 1, accent: "violet" },
-  { id: "bio", name: "Biology", abbrev: "BIO", level: 1, accent: "pink" },
-  { id: "eng", name: "English", abbrev: "ENG", level: 1, accent: "amber" },
-  { id: "cs", name: "AI & CS", abbrev: "CS", level: 1, accent: "blue" },
-  { id: "eco", name: "Quant", abbrev: "QNT", level: 1, accent: "teal" },
-  { id: "fin", name: "FinLit", abbrev: "FIN", level: 1, accent: "amber" },
-  { id: "gk", name: "GK", abbrev: "GK", level: 1, accent: "rose" },
-  { id: "log", name: "Logic", abbrev: "LOG", level: 1, accent: "violet" },
-];
+/** Catalog used for progress maps — includes all 13 Decathlon disciplines. */
+export const subjects: Subject[] = (
+  Object.keys(DISCIPLINES) as DisciplineId[]
+).map((id) => {
+  const d = DISCIPLINES[id];
+  return {
+    id: d.id,
+    name: d.shortName,
+    abbrev: d.shortName.slice(0, 3).toUpperCase(),
+    level: 1,
+    accent: d.accent === "blue" ? "teal" : d.accent,
+  };
+});

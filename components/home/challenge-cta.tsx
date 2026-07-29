@@ -44,9 +44,11 @@ export function ChallengeCTA({ className }: ChallengeCTAProps) {
 
   const isTester = isTesterInvestorEmail(email);
   const blocked = campaignLevel >= 4 && !isProctoredPaid;
+  // Normal users: show countdown until tomorrow. Testers still see it, but can skip.
   const showCompleted = isSignedIn && todayCompleted && !blocked && !isTester;
-  const msLeft = useNextChallengeCountdown(showCompleted);
-  const challengeHref = isSignedIn ? "/challenge" : "/signin?redirect=/challenge";
+  const showTesterLocked = isSignedIn && todayCompleted && !blocked && isTester;
+  const msLeft = useNextChallengeCountdown(showCompleted || showTesterLocked);
+  const challengeHref = isSignedIn ? "/challenge" : "/signin";
 
   if (showCompleted) {
     return (
@@ -67,9 +69,9 @@ export function ChallengeCTA({ className }: ChallengeCTAProps) {
 
   const label = blocked
     ? "Unlock Proctored Round"
-    : isTester && todayCompleted
-      ? "Play again (tester)"
-      : "Start Today's Challenge";
+    : showTesterLocked
+      ? `Play Level ${campaignLevel} now (tester)`
+      : `Start Level ${campaignLevel} Challenge`;
 
   return (
     <motion.div
@@ -81,7 +83,7 @@ export function ChallengeCTA({ className }: ChallengeCTAProps) {
       <Link
         href={challengeHref}
         onClick={() => {
-          if (isTester && todayCompleted) {
+          if (showTesterLocked) {
             skipDailyWait();
             void postTesterAction({ action: "skip_wait" }).then((progress) => {
               if (progress) hydrateProgress(progress);
@@ -103,6 +105,12 @@ export function ChallengeCTA({ className }: ChallengeCTAProps) {
           <ArrowRight className="size-5 stroke-[2.5] text-white" />
         </motion.span>
       </Link>
+
+      {showTesterLocked ? (
+        <p className="mt-2 text-center text-[11px] text-amber-200/80">
+          Normal unlock: Level {campaignLevel} in {formatCountdown(msLeft)} · admin skip active
+        </p>
+      ) : null}
     </motion.div>
   );
 }

@@ -44,55 +44,62 @@ export function ChallengeHud({
 }: ChallengeHudProps) {
   const strikeCount = Math.min(maxStrikes, strikes);
   const urgent = sessionLeft <= 60;
-  const sessionTotalSec = challengeSessionDurationSec();
+  const sessionTotalSec = challengeSessionDurationSec(campaignLevel);
   const sessionPct = Math.max(0, Math.min(100, (sessionLeft / sessionTotalSec) * 100));
 
   return (
-    <header className="mb-3 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-[#121820]/95 shadow-lg shadow-black/20 sm:mb-4 sm:rounded-2xl">
-      <div className="h-0.5 bg-white/5 sm:h-1">
+    <header className="mb-3 shrink-0 overflow-hidden rounded-2xl border border-white/15 bg-slate-950/80 backdrop-blur-xl shadow-2xl shadow-emerald-950/20 sm:mb-4">
+      <div className="h-1 bg-white/10">
         <div
-          className={cn("h-full transition-all duration-500", urgent ? "bg-destructive" : "bg-primary")}
+          className={cn(
+            "h-full transition-all duration-500 rounded-r-full shadow-sm",
+            urgent
+              ? "bg-gradient-to-r from-rose-500 to-red-600 shadow-rose-500/50 animate-pulse"
+              : "bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400 shadow-emerald-500/50"
+          )}
           style={{ width: `${sessionPct}%` }}
         />
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 sm:gap-3 sm:px-4 sm:py-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 sm:gap-4 sm:px-5 sm:py-3">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:gap-3">
-          <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary sm:px-3 sm:py-1 sm:text-xs">
-            <Zap className="size-3 sm:size-3.5" />
-            L{campaignLevel}
-          </span>
-          <span
-            className={cn(
-              "inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold tabular-nums sm:px-3 sm:py-1 sm:text-xs",
-              urgent
-                ? "border-destructive/40 bg-destructive/10 text-destructive"
-                : "border-white/10 bg-white/5 text-foreground"
-            )}
-          >
-            <Clock className="size-3 sm:size-3.5" />
-            {formatChallengeClock(sessionLeft)}
-          </span>
-          <span
-            className={cn(
-              "inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold sm:px-3 sm:py-1 sm:text-xs",
-              strikeCount >= 2
-                ? "border-destructive/40 bg-destructive/10 text-destructive"
-                : "border-orange-500/30 bg-orange-500/10 text-orange-300"
-            )}
-          >
-            <Flame className="size-3 sm:size-3.5" />
-            {strikeCount}/{maxStrikes}
+          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/15 px-3 py-1 text-xs font-extrabold text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.25)]">
+            <Zap className="size-3.5 fill-emerald-400 text-emerald-300" />
+            Level {campaignLevel}
           </span>
 
-          <div className="hidden min-w-0 flex-1 items-center gap-2 md:flex">
-            <div className="ebc-qprogress flex gap-1" aria-label="Question progress">
+          <span
+            className={cn(
+              "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-extrabold tabular-nums transition-all",
+              urgent
+                ? "border-rose-500/50 bg-rose-500/20 text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.3)] animate-pulse"
+                : "border-cyan-500/30 bg-cyan-500/10 text-cyan-300 shadow-[0_0_10px_rgba(6,182,212,0.15)]"
+            )}
+          >
+            <Clock className="size-3.5 text-cyan-400" />
+            {formatChallengeClock(sessionLeft)}
+          </span>
+
+          <span
+            className={cn(
+              "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-extrabold transition-all",
+              strikeCount >= 2
+                ? "border-rose-500/50 bg-rose-500/20 text-rose-300 shadow-[0_0_12px_rgba(244,63,94,0.3)]"
+                : "border-amber-500/40 bg-amber-500/15 text-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.15)]"
+            )}
+          >
+            <Flame className="size-3.5 text-amber-400 fill-amber-400/30" />
+            {strikeCount}/{maxStrikes} Strikes
+          </span>
+
+          <div className="hidden min-w-0 flex-1 items-center gap-3 md:flex">
+            <div className="ebc-qprogress flex gap-1.5" aria-label="Question progress">
               {dotStates.map((state, i) => (
                 <span key={i} className={cn("ebc-qp-dot", dotClass(state))} />
               ))}
             </div>
-            <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
-              {questionIndex + 1}/{questionTotal}
+            <span className="shrink-0 text-xs font-bold tabular-nums text-slate-400">
+              Q {questionIndex + 1} of {questionTotal}
             </span>
           </div>
         </div>
@@ -100,23 +107,24 @@ export function ChallengeHud({
         <button
           type="button"
           onClick={onQuit}
-          className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground sm:px-3 sm:py-1.5 sm:text-xs"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-slate-300 transition-all hover:border-rose-500/40 hover:bg-rose-500/15 hover:text-rose-300"
         >
-          <LogOut className="size-3 sm:size-3.5" />
+          <LogOut className="size-3.5" />
           Quit
         </button>
       </div>
 
-      <div className="flex items-center justify-between border-t border-white/5 px-3 py-1.5 md:hidden">
-        <div className="ebc-qprogress flex gap-1" aria-label="Question progress">
+      <div className="flex items-center justify-between border-t border-white/10 px-3.5 py-2 md:hidden">
+        <div className="ebc-qprogress flex gap-1.5" aria-label="Question progress">
           {dotStates.map((state, i) => (
             <span key={i} className={cn("ebc-qp-dot", dotClass(state))} />
           ))}
         </div>
-        <span className="text-[11px] tabular-nums text-muted-foreground">
-          Q {questionIndex + 1}/{questionTotal}
+        <span className="text-xs font-bold tabular-nums text-slate-300">
+          Q {questionIndex + 1} of {questionTotal}
         </span>
       </div>
     </header>
   );
 }
+

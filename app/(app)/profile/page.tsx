@@ -120,8 +120,8 @@ export default function ProfilePage() {
                     </Label>
                   </div>
                   <p className="text-xs leading-relaxed text-muted-foreground">
-                    When on, daily challenges use proctored-style protection — screen capture shortcuts
-                    are blocked and a shield overlay appears if capture is attempted.
+                    Only applies to proctored rounds (Level 4+). Free-zone Levels 1–3 never
+                    block screenshots.
                   </p>
                 </div>
                 <Switch

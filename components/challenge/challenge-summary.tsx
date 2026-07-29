@@ -13,6 +13,7 @@ interface ChallengeSummaryProps {
   campaignLevelAtStart: number;
   showPaywallPrompt: boolean;
   onOpenPaywall: () => void;
+  onRestart?: () => void;
 }
 
 function summaryCopy(
@@ -33,12 +34,12 @@ function summaryCopy(
       }
       return {
         title: "Level passed!",
-        description: `You scored ${correct}/${total} and stayed under ${maxStrikes} strikes. You're now Level ${levelAtStart + 1}.`,
+        description: `You scored ${correct}/${total} and stayed under ${maxStrikes} strikes. Level ${levelAtStart + 1} unlocks tomorrow — come back then to continue.`,
       };
     case "strikes":
       return {
-        title: `${maxStrikes} strikes — challenge ended`,
-        description: `You hit ${maxStrikes} wrong or unanswered questions. Try again tomorrow.`,
+        title: `${maxStrikes} strikes limit reached`,
+        description: `You hit ${maxStrikes} wrong or unanswered questions. Return to Home, then start the challenge again when you're ready.`,
       };
     case "time":
       return {
@@ -69,47 +70,75 @@ export function ChallengeSummary({
   campaignLevelAtStart,
   showPaywallPrompt,
   onOpenPaywall,
+  onRestart,
 }: ChallengeSummaryProps) {
   const router = useRouter();
   const { title, description } = summaryCopy(reason, correct, total, campaignLevelAtStart);
   const passed = reason === "won";
 
   return (
-    <div className="mx-auto w-full max-w-lg space-y-6 rounded-2xl border border-white/10 bg-[#121820]/95 p-6 text-center shadow-2xl shadow-black/40 backdrop-blur-md lg:max-w-xl lg:p-8">
+    <div className="mx-auto w-full max-w-lg space-y-6 rounded-2xl border border-white/15 bg-slate-950/85 p-6 text-center shadow-2xl shadow-emerald-950/20 backdrop-blur-xl lg:max-w-xl lg:p-8">
       <div
         className={
           passed
-            ? "mx-auto flex size-16 items-center justify-center rounded-full bg-primary/15 text-2xl"
-            : "mx-auto flex size-16 items-center justify-center rounded-full bg-destructive/10 text-2xl"
+            ? "mx-auto flex size-20 items-center justify-center rounded-full bg-emerald-500/20 text-3xl font-extrabold text-emerald-400 border border-emerald-500/40 shadow-[0_0_25px_rgba(16,185,129,0.35)]"
+            : "mx-auto flex size-20 items-center justify-center rounded-full bg-rose-500/20 text-3xl font-extrabold text-rose-400 border border-rose-500/40 shadow-[0_0_25px_rgba(244,63,94,0.35)]"
         }
       >
         {passed ? "✓" : "✗"}
       </div>
       <div>
-        <p className="text-4xl font-bold tabular-nums text-foreground">
+        <p className="text-4xl font-extrabold tabular-nums text-white">
           {correct}/{total}
         </p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {Math.round((correct / Math.max(total, 1)) * 100)}% accuracy · need 80% to pass
+        <p className="mt-1 text-xs font-bold uppercase tracking-wider text-slate-400">
+          {Math.round((correct / Math.max(total, 1)) * 100)}% accuracy · {passed ? "Passed" : "Strikes Reached"}
         </p>
       </div>
       <div>
-        <h2 className="text-xl font-semibold">{title}</h2>
-        <p className="mt-2 text-sm text-muted-foreground">{description}</p>
+        <h2 className="text-2xl font-black text-white">{title}</h2>
+        <p className="mt-2 text-sm text-slate-300">{description}</p>
       </div>
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-3 pt-2">
         {showPaywallPrompt && passed ? (
-          <Button onClick={onOpenPaywall}>Unlock proctored round · ₹999</Button>
+          <Button
+            className="w-full bg-gradient-to-r from-emerald-500 to-cyan-500 font-extrabold text-white shadow-lg shadow-emerald-500/30"
+            onClick={onOpenPaywall}
+          >
+            Unlock proctored round · ₹999
+          </Button>
         ) : null}
-        <Button variant={passed ? "outline" : "default"} onClick={() => router.push("/home")}>
-          Back to Home
+
+        <Button
+          size="lg"
+          className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-extrabold shadow-lg shadow-emerald-500/25"
+          onClick={() => router.push("/home")}
+        >
+          Return to Home Page
         </Button>
+
+        {onRestart && (
+          <Button
+            variant="outline"
+            size="lg"
+            className="w-full border-white/20 bg-white/5 font-bold text-slate-200 hover:bg-white/10"
+            onClick={onRestart}
+          >
+            Try Again ↻
+          </Button>
+        )}
+
         {!passed && reason !== "quit" ? (
-          <Button variant="ghost" onClick={() => router.push("/levels")}>
-            View level map
+          <Button
+            variant="ghost"
+            className="w-full text-slate-400 hover:text-white"
+            onClick={() => router.push("/levels")}
+          >
+            View Level Map
           </Button>
         ) : null}
       </div>
     </div>
   );
 }
+

@@ -38,11 +38,11 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <AuthGate>
       {isAuthPage ? (
-        <div className="flex min-h-dvh flex-col bg-background bg-mesh">
-          <header className="flex h-14 items-center border-b border-border/50 px-4 sm:px-6">
+        <div className="flex h-dvh flex-col overflow-hidden bg-background bg-mesh">
+          <header className="flex h-12 shrink-0 items-center border-b border-border/50 px-4 sm:px-6">
             <EduDecaLogo />
           </header>
-          <main className="flex flex-1 items-start justify-center px-4 py-6 sm:px-6 sm:py-10">
+          <main className="flex min-h-0 flex-1 items-start justify-center overflow-y-auto px-3 py-3 sm:items-center sm:px-5 sm:py-4">
             <PageTransition>{children}</PageTransition>
           </main>
         </div>

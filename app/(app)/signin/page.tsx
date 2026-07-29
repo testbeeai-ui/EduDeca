@@ -8,10 +8,14 @@ import { walkthroughSteps } from "@/data/walkthrough";
 import { useAppStore } from "@/store/useAppStore";
 
 function SignInContent() {
-  const currentStep = useAppStore((s) => s.walkthroughStep);
+  const currentStepRaw = useAppStore((s) => s.walkthroughStep);
   const nextWalkthroughStep = useAppStore((s) => s.nextWalkthroughStep);
   const prevWalkthroughStep = useAppStore((s) => s.prevWalkthroughStep);
   const setWalkthroughStep = useAppStore((s) => s.setWalkthroughStep);
+  const currentStep = Math.min(
+    Math.max(currentStepRaw, 1),
+    walkthroughSteps.length,
+  );
 
   return (
     <MotionFade className="w-full">
@@ -21,7 +25,7 @@ function SignInContent() {
         onNext={nextWalkthroughStep}
         onBack={prevWalkthroughStep}
         onStepClick={setWalkthroughStep}
-        onSkipToSignIn={() => setWalkthroughStep(6)}
+        onSkipToSignIn={() => setWalkthroughStep(walkthroughSteps.length)}
       />
     </MotionFade>
   );

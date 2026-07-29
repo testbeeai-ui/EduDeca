@@ -13,9 +13,15 @@ export class ChallengeLoadError extends Error {
 
 export async function loadDailyChallenge(
   campaignLevel: number,
+  disciplines?: string[] | null,
 ): Promise<ChallengeQuestion[]> {
   const level = Math.max(1, Math.min(10, Math.floor(campaignLevel) || 1));
-  const res = await fetch(`/api/challenge/questions?level=${level}`, {
+  const params = new URLSearchParams({ level: String(level) });
+  if (disciplines && disciplines.length === 10) {
+    params.set("disciplines", disciplines.join(","));
+  }
+
+  const res = await fetch(`/api/challenge/questions?${params.toString()}`, {
     method: "GET",
     cache: "no-store",
   });

@@ -55,3 +55,22 @@ export async function patchAntiCapture(enabled: boolean): Promise<EduDecaProgres
     return null;
   }
 }
+
+export async function patchDisciplines(disciplines: string[]): Promise<EduDecaProgress | null> {
+  try {
+    const res = await fetch("/api/progress", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ disciplines }),
+    });
+    if (!res.ok) {
+      console.warn("[progress] disciplines patch failed", res.status);
+      return null;
+    }
+    const json = (await res.json()) as { progress?: EduDecaProgress };
+    return json.progress ?? null;
+  } catch (err) {
+    console.warn("[progress] disciplines error", err);
+    return null;
+  }
+}
