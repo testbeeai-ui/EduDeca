@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/providers/theme-provider";
 import { SmoothScrollProvider } from "@/components/providers/smooth-scroll-provider";
 import { AmbientOrbs } from "@/components/common/ambient-orbs";
 
+import "katex/dist/katex.min.css";
 import "./globals.css";
 import "./challenge-styles.css";
 

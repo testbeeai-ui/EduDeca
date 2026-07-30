@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { MathText } from "@/components/common/math-text";
 import { RESULT_FLASH_MS } from "@/lib/challenge/meta";
 import type { ChallengeQuestion } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -149,7 +150,9 @@ export function ChallengeQuestionCard({
             <div className="ebc-left-col">
               <div className="ebc-question-area">
                 <div className="ebc-q-label">Question</div>
-                <p className="ebc-q-text">{question.stem}</p>
+                <MathText as="p" className="ebc-q-text">
+                  {question.stem}
+                </MathText>
               </div>
             </div>
 
@@ -180,7 +183,9 @@ export function ChallengeQuestionCard({
                       )}
                     >
                       <div className="ebc-opt-num">{i + 1}</div>
-                      <div className="ebc-opt-text min-w-0">{option}</div>
+                      <MathText as="div" className="ebc-opt-text min-w-0">
+                        {option}
+                      </MathText>
                       <span className="ebc-opt-tick" aria-hidden>
                         ✓
                       </span>
@@ -196,7 +201,9 @@ export function ChallengeQuestionCard({
               )}
 
               {answered && showExplanation && explanation ? (
-                <div className="ebc-explanation">{explanation}</div>
+                <MathText as="div" className="ebc-explanation">
+                  {explanation}
+                </MathText>
               ) : null}
             </div>
           </div>

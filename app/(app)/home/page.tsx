@@ -15,20 +15,18 @@ import { useAppStore, useProgressUser, useSubjectsWithProgress } from "@/store/u
 export default function HomePage() {
   const isSignedIn = useAppStore((s) => s.isSignedIn);
   const userName = useAppStore((s) => s.userName);
-  const streakDays = useAppStore((s) => s.streakDays);
   const progress = useProgressUser();
   const subjects = useSubjectsWithProgress();
 
   const greetingName = isSignedIn && userName ? firstNameFrom(userName) : "Student";
   const greetingSubtitle = isSignedIn
-    ? `Day ${streakDays} streak — your journey starts here. Play today to keep it alive.`
+    ? "Your journey starts here. Play today to keep climbing."
     : "Your daily learning journey starts here. Start today's challenge to begin.";
 
   const user = {
     ...currentUser,
     level: progress.level,
     xp: progress.xp,
-    streakDays,
     zone: progress.zone,
   };
 
