@@ -1,6 +1,6 @@
 "use client";
 
-import { Rocket, ShieldCheck } from "lucide-react";
+import { Rocket, Share2, ShieldCheck, Users } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { AvatarStack } from "@/components/common/avatar-stack";
@@ -8,17 +8,19 @@ import {
   ReferralListDialog,
   type ReferralMinePayload,
 } from "@/components/home/referral-list-dialog";
+import { ReferralShareSheet } from "@/components/home/referral-share-sheet";
 import { useAppStore } from "@/store/useAppStore";
 
 /**
- * Live referral card: count + avatars of people who joined via this user's ED- code.
- * Click opens the full list popup (investor ask).
+ * Referral card: primary CTA opens share sheet (WhatsApp / copy / more);
+ * secondary opens who joined via your ED- code.
  */
 export function SquadCard() {
   const isSignedIn = useAppStore((s) => s.isSignedIn);
   const [data, setData] = useState<ReferralMinePayload | null>(null);
   const [loading, setLoading] = useState(false);
-  const [open, setOpen] = useState(false);
+  const [listOpen, setListOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const load = useCallback(async () => {
     if (!isSignedIn) {
@@ -56,62 +58,90 @@ export function SquadCard() {
       avatarColor: e.avatarColor,
     })) ?? [];
 
-  const prompt =
-    count === 0
-      ? "Share your invite link so friends can join EduDeca."
-      : "Tap to see everyone who joined with your code.";
+  const openShare = () => {
+    if (!isSignedIn) return;
+    void load().then(() => setShareOpen(true));
+  };
+
+  const openList = () => {
+    if (!isSignedIn) return;
+    void load().then(() => setListOpen(true));
+  };
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => {
-          if (!isSignedIn) return;
-          setOpen(true);
-          void load();
-        }}
-        className="glass-card card-top-light rounded-2xl p-5 relative overflow-hidden transition-all duration-300 hover:border-emerald-500/30 text-left w-full disabled:opacity-70"
-        disabled={!isSignedIn}
-        aria-label="Open your referral list"
-      >
+      <div className="glass-card card-top-light rounded-2xl p-5 relative overflow-hidden transition-all duration-300 hover:border-emerald-500/30 w-full">
         <div className="absolute top-0 right-0 size-24 bg-cyan-500/10 rounded-full blur-xl pointer-events-none" />
 
         <div className="flex items-start gap-4 relative z-10">
           <div className="flex size-11 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/10 border border-emerald-500/30 text-emerald-400 shadow-md shadow-emerald-500/10 shrink-0">
             <Rocket className="size-5" />
           </div>
-          <div className="flex-1 space-y-3">
+          <div className="flex-1 space-y-3 min-w-0">
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <p className="font-bold text-white text-base tracking-tight">
-                  Your referrals
+                  Refer friends
                 </p>
                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[11px] font-bold text-emerald-300">
                   <ShieldCheck className="size-3 text-emerald-400" />
-                  {loading ? "…" : `${count} joined`}
+                  {loading && !data ? "…" : `${count} joined`}
                 </span>
               </div>
               <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">
                 {isSignedIn
-                  ? prompt
-                  : "Sign in to get your ED- invite code and track who joins."}
+                  ? "Invite classmates with your personal link. They sign up → they land in your referral list."
+                  : "Sign in to get your ED- invite code and start referring."}
               </p>
               {data?.code ? (
-                <p className="mt-1 font-mono text-[11px] text-emerald-400/90">
+                <p className="mt-1.5 font-mono text-[11px] text-emerald-400/90">
                   {data.code}
                 </p>
               ) : null}
             </div>
+
             {members.length > 0 ? <AvatarStack members={members} /> : null}
+
+            <div className="flex flex-wrap gap-2 pt-0.5">
+              <button
+                type="button"
+                onClick={openShare}
+                disabled={!isSignedIn}
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-3.5 py-2 text-xs font-extrabold text-[#04120e] shadow-lg shadow-emerald-500/20 transition hover:brightness-110 disabled:opacity-40 disabled:pointer-events-none"
+              >
+                <Share2 className="size-3.5" />
+                Refer now
+              </button>
+              <button
+                type="button"
+                onClick={openList}
+                disabled={!isSignedIn}
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3.5 py-2 text-xs font-bold text-slate-200 transition hover:bg-white/10 disabled:opacity-40 disabled:pointer-events-none"
+              >
+                <Users className="size-3.5" />
+                Who joined
+              </button>
+            </div>
           </div>
         </div>
-      </button>
+      </div>
+
+      <ReferralShareSheet
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        code={data?.code ?? null}
+        shareUrl={data?.shareUrl ?? ""}
+      />
 
       <ReferralListDialog
-        open={open}
-        onClose={() => setOpen(false)}
+        open={listOpen}
+        onClose={() => setListOpen(false)}
         data={data}
         loading={loading && !data}
+        onReferAgain={() => {
+          setListOpen(false);
+          setShareOpen(true);
+        }}
       />
     </>
   );

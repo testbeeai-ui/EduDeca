@@ -1,7 +1,7 @@
 "use client";
 
-import { Copy, Users, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Share2, Users, X } from "lucide-react";
+import { useEffect } from "react";
 
 import { AvatarStack } from "@/components/common/avatar-stack";
 import { cn } from "@/lib/utils";
@@ -26,6 +26,7 @@ type ReferralListDialogProps = {
   onClose: () => void;
   data: ReferralMinePayload | null;
   loading?: boolean;
+  onReferAgain?: () => void;
 };
 
 export function ReferralListDialog({
@@ -33,9 +34,8 @@ export function ReferralListDialog({
   onClose,
   data,
   loading,
+  onReferAgain,
 }: ReferralListDialogProps) {
-  const [copied, setCopied] = useState(false);
-
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -46,17 +46,6 @@ export function ReferralListDialog({
   }, [open, onClose]);
 
   if (!open) return null;
-
-  const copyLink = async () => {
-    if (!data?.shareUrl) return;
-    try {
-      await navigator.clipboard.writeText(data.shareUrl);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
-    } catch {
-      /* ignore */
-    }
-  };
 
   return (
     <div
@@ -76,10 +65,10 @@ export function ReferralListDialog({
               id="referral-dialog-title"
               className="text-base font-bold text-white tracking-tight"
             >
-              Your referrals
+              Who joined
             </h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              People who joined EduDeca with your invite link.
+              Friends who signed up with your invite link.
             </p>
           </div>
           <button
@@ -96,35 +85,42 @@ export function ReferralListDialog({
           <p className="py-8 text-center text-sm text-muted-foreground">Loading…</p>
         ) : (
           <>
-            <div className="mb-4 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5">
-              <p className="text-[11px] uppercase tracking-wider text-slate-500">
-                Your code
-              </p>
-              <p className="mt-0.5 font-mono text-sm font-semibold text-emerald-300">
-                {data?.code ?? "—"}
-              </p>
-              <button
-                type="button"
-                onClick={() => void copyLink()}
-                className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1.5 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/20"
-              >
-                <Copy className="size-3.5" />
-                {copied ? "Copied!" : "Copy invite link"}
-              </button>
-            </div>
-
-            <div className="mb-3 flex items-center gap-2 text-sm text-slate-300">
-              <Users className="size-4 text-emerald-400" />
-              <span>
-                <strong className="text-white">{data?.count ?? 0}</strong> joined
+            <div className="mb-3 flex items-center justify-between gap-2 text-sm text-slate-300">
+              <span className="inline-flex items-center gap-2">
+                <Users className="size-4 text-emerald-400" />
+                <span>
+                  <strong className="text-white">{data?.count ?? 0}</strong> joined
+                </span>
               </span>
+              {onReferAgain ? (
+                <button
+                  type="button"
+                  onClick={onReferAgain}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1.5 text-xs font-bold text-emerald-300 hover:bg-emerald-500/20"
+                >
+                  <Share2 className="size-3.5" />
+                  Refer again
+                </button>
+              ) : null}
             </div>
 
             {(data?.entries.length ?? 0) === 0 ? (
-              <p className="rounded-xl border border-dashed border-white/10 px-3 py-6 text-center text-xs text-muted-foreground">
-                No one has joined with your link yet. Share it on WhatsApp to grow
-                your list.
-              </p>
+              <div className="rounded-xl border border-dashed border-white/10 px-3 py-6 text-center space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  No one has joined with your link yet. Share on WhatsApp to grow
+                  your list.
+                </p>
+                {onReferAgain ? (
+                  <button
+                    type="button"
+                    onClick={onReferAgain}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-2 text-xs font-extrabold text-[#04120e]"
+                  >
+                    <Share2 className="size-3.5" />
+                    Refer friends
+                  </button>
+                ) : null}
+              </div>
             ) : (
               <ul className="max-h-64 space-y-2 overflow-y-auto pr-1">
                 {data!.entries.map((entry) => (
