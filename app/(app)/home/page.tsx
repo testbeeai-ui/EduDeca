@@ -8,7 +8,7 @@ import { MotionFade } from "@/components/common/motion-fade";
 import { LeaderboardPreview } from "@/components/home/leaderboard-preview";
 import { SquadCard } from "@/components/home/squad-card";
 import { leaderboardPreview } from "@/data/leaderboard";
-import { squadInfo } from "@/data/squad";
+import { buildEduDecaShareUrl } from "@/lib/referral/referral-code";
 import { cn, firstNameFrom } from "@/lib/utils";
 import { useAppStore, useProgressUser, useSubjectsWithProgress } from "@/store/useAppStore";
 
@@ -53,13 +53,6 @@ const journeySteps = [
   },
 ] as const;
 
-const onboardPath = [
-  { n: "01", label: "Free daily rounds", detail: "Levels + RDM" },
-  { n: "02", label: "Paid proctored", detail: "Official state rank" },
-  { n: "03", label: "Metro Finals", detail: "Live national title" },
-  { n: "04", label: "EduBlast", detail: "JEE / KCET prep" },
-] as const;
-
 function zoneProgress(level: number) {
   if (level <= 3) return { current: level, max: 3, label: "Free Zone", range: "Levels 1–3" };
   if (level <= 6) return { current: level - 3, max: 3, label: "Proctored Zone", range: "Levels 4–6" };
@@ -94,6 +87,7 @@ function useAnimatedCounter(target: number, duration: number = 1400) {
 export default function HomePage() {
   const isSignedIn = useAppStore((s) => s.isSignedIn);
   const userName = useAppStore((s) => s.userName);
+  const referralCode = useAppStore((s) => s.referralCode);
   const progress = useProgressUser();
   const subjects = useSubjectsWithProgress();
   const [showOnboard, setShowOnboard] = useState(true);
@@ -112,9 +106,16 @@ export default function HomePage() {
   const ringProgress = zone.current / zone.max;
   const ringOffset = ringCircumference * (1 - ringProgress);
 
+  const inviteUrl = () => {
+    if (typeof window === "undefined") return "";
+    return referralCode
+      ? buildEduDecaShareUrl(window.location.origin, referralCode)
+      : window.location.origin;
+  };
+
   const copyShareLink = () => {
     if (typeof window !== "undefined") {
-      navigator.clipboard.writeText(window.location.origin);
+      void navigator.clipboard.writeText(inviteUrl());
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     }
@@ -123,8 +124,8 @@ export default function HomePage() {
   const shareWhatsApp = () => {
     if (typeof window !== "undefined") {
       const text = encodeURIComponent(
-        "Join me on EduDeca — India's National Academic Decathlon! Compete across 10 disciplines and rank nationally: " +
-          window.location.origin
+        "Join me on EduDeca — India's National Academic Decathlon! Use my invite link: " +
+          inviteUrl(),
       );
       window.open(`https://api.whatsapp.com/send?text=${text}`, "_blank");
     }
@@ -265,27 +266,6 @@ export default function HomePage() {
                 Finals. Your EduDeca profile carries straight into <b>EduBlast</b> for JEE/KCET prep.
               </div>
             </div>
-            <div className="onboard-path-wrap">
-              <p className="onboard-path-head">Your path</p>
-              <ol className="onboard-path" aria-label="EduDeca path in four stages">
-              {onboardPath.map((step, index) => (
-                <li key={step.n} className="onboard-path-item">
-                  <div className="onboard-path-rail">
-                    <span className="onboard-path-n">{step.n}</span>
-                    {index < onboardPath.length - 1 ? (
-                      <span className="onboard-path-connector" aria-hidden="true">
-                        <ArrowRight className="onboard-path-arrow" />
-                      </span>
-                    ) : null}
-                  </div>
-                  <div className="onboard-path-copy">
-                    <div className="onboard-path-label">{step.label}</div>
-                    <div className="onboard-path-detail">{step.detail}</div>
-                  </div>
-                </li>
-              ))}
-            </ol>
-            </div>
           </div>
         </MotionFade>
       )}
@@ -396,7 +376,7 @@ export default function HomePage() {
 
       {/* ============ SQUAD & LEADERBOARD DASHBOARD ============ */}
       <section className="grid gap-4 lg:grid-cols-2 items-start">
-        <SquadCard squad={squadInfo} />
+        <SquadCard />
         <LeaderboardPreview entries={leaderboardPreview} />
       </section>
 

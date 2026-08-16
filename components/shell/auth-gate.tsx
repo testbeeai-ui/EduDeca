@@ -24,12 +24,55 @@ function displayNameFromUser(user: User): string {
 }
 
 function applyUserToStore(user: User | null) {
-  const { signIn, signOut, isSignedIn } = useAppStore.getState();
+  const { signIn, signOut, isSignedIn, setStudentCode, setReferralCode } =
+    useAppStore.getState();
   if (user) {
+    const meta = user.user_metadata ?? {};
+    const avatarFromMeta =
+      (typeof meta.avatar_url === "string" && meta.avatar_url) ||
+      (typeof meta.picture === "string" && meta.picture) ||
+      null;
     signIn(displayNameFromUser(user), {
+      userId: user.id,
+      avatarUrl: avatarFromMeta,
       email: user.email ?? null,
       phone: user.phone ?? null,
     });
+    void (async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("student_code, edudeca_referral_code")
+        .eq("id", user.id)
+        .maybeSingle();
+      let code =
+        data && typeof data.student_code === "string" ? data.student_code : null;
+      if (!code?.trim()) {
+        const { data: minted } = await supabase.rpc("ensure_my_student_code");
+        if (typeof minted === "string") code = minted;
+      }
+      setStudentCode(code);
+
+      let referral =
+        data && typeof data.edudeca_referral_code === "string"
+          ? data.edudeca_referral_code
+          : null;
+      if (!referral?.trim()) {
+        const { data: mintedRef } = await supabase.rpc(
+          "ensure_my_edudeca_referral_code",
+        );
+        if (typeof mintedRef === "string") referral = mintedRef;
+      }
+      setReferralCode(referral);
+
+      try {
+        await fetch("/api/referral/claim", {
+          method: "POST",
+          credentials: "include",
+        });
+      } catch {
+        /* pending claim is best-effort */
+      }
+    })();
   } else if (isSignedIn) {
     signOut();
   }

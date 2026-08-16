@@ -27,13 +27,32 @@ interface AppState {
   leaderboardTab: "students" | "colleges";
   setLeaderboardTab: (tab: "students" | "colleges") => void;
   isSignedIn: boolean;
+  /** Supabase auth.users.id — same Student ID source as Edubite / EduBlast. */
+  userId: string | null;
+  /** Public Student ID from profiles.student_code (EB-26A0B0C1). */
+  studentCode: string | null;
+  /** EduDeca invite code from profiles.edudeca_referral_code (ED-267K2M9Q4A). */
+  referralCode: string | null;
+  /** Google / auth avatar URL (may fail to load — UI must fall back to initials). */
+  avatarUrl: string | null;
   phone: string | null;
   email: string | null;
   userName: string | null;
   hasHydrated: boolean;
   progressSynced: boolean;
   setHasHydrated: (value: boolean) => void;
-  signIn: (name: string, options?: { phone?: string | null; email?: string | null }) => void;
+  signIn: (
+    name: string,
+    options?: {
+      userId?: string | null;
+      studentCode?: string | null;
+      avatarUrl?: string | null;
+      phone?: string | null;
+      email?: string | null;
+    },
+  ) => void;
+  setStudentCode: (code: string | null) => void;
+  setReferralCode: (code: string | null) => void;
   signOut: () => void;
   campaignLevel: number;
   xp: number;
@@ -111,6 +130,10 @@ export const useAppStore = create<AppState>()(
       leaderboardTab: "students",
       setLeaderboardTab: (tab) => set({ leaderboardTab: tab }),
       isSignedIn: false,
+      userId: null,
+      studentCode: null,
+      referralCode: null,
+      avatarUrl: null,
       phone: null,
       email: null,
       userName: null,
@@ -120,15 +143,24 @@ export const useAppStore = create<AppState>()(
       signIn: (name, options) =>
         set({
           isSignedIn: true,
+          userId: options?.userId ?? null,
+          studentCode: options?.studentCode ?? null,
+          avatarUrl: options?.avatarUrl ?? null,
           userName: name.trim(),
           phone: options?.phone ?? null,
           email: options?.email ?? null,
           walkthroughStep: 1,
         }),
+      setStudentCode: (code) => set({ studentCode: code }),
+      setReferralCode: (code) => set({ referralCode: code }),
       signOut: () => {
         const defaults = defaultEduDecaProgress();
         set({
           isSignedIn: false,
+          userId: null,
+          studentCode: null,
+          referralCode: null,
+          avatarUrl: null,
           phone: null,
           email: null,
           userName: null,
