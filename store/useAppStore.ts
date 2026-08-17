@@ -15,6 +15,7 @@ import {
   validateLineup,
   type DisciplineLineup,
 } from "@/lib/disciplines/selection";
+import type { SignupClassLevel } from "@/lib/signin/signup-profile";
 import type { ChallengeCompletePayload, SubjectLevels } from "@/lib/types";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
@@ -65,6 +66,12 @@ interface AppState {
   antiCaptureEnabled: boolean;
   disciplineLineup: DisciplineLineup;
   setDisciplineLineup: (lineup: DisciplineLineup) => void;
+  /** Pre-auth walkthrough: Class 11/12 (local until fill-if-empty profiles sync). */
+  signupClassLevel: SignupClassLevel | null;
+  setSignupClassLevel: (level: SignupClassLevel | null) => void;
+  /** Pre-auth walkthrough: college / school name (local until sync). */
+  signupCollege: string;
+  setSignupCollege: (college: string) => void;
   setProctoredPaid: () => void;
   setAntiCaptureEnabled: (enabled: boolean) => void;
   /** Apply server progress snapshot (auth hydrate / admin API / complete). */
@@ -168,6 +175,8 @@ export const useAppStore = create<AppState>()(
           ...progressSlice(defaults),
           progressSynced: false,
           disciplineLineup: emptyLineup(),
+          signupClassLevel: null,
+          signupCollege: "",
         });
       },
       campaignLevel: 1,
@@ -181,6 +190,10 @@ export const useAppStore = create<AppState>()(
       antiCaptureEnabled: false,
       disciplineLineup: emptyLineup(),
       setDisciplineLineup: (lineup) => set({ disciplineLineup: lineup }),
+      signupClassLevel: null,
+      setSignupClassLevel: (level) => set({ signupClassLevel: level }),
+      signupCollege: "",
+      setSignupCollege: (college) => set({ signupCollege: college }),
       setProctoredPaid: () =>
         set({
           isProctoredPaid: true,
@@ -227,6 +240,8 @@ export const useAppStore = create<AppState>()(
         todayCompleted: state.todayCompleted,
         antiCaptureEnabled: state.antiCaptureEnabled,
         disciplineLineup: state.disciplineLineup,
+        signupClassLevel: state.signupClassLevel,
+        signupCollege: state.signupCollege,
       }),
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);

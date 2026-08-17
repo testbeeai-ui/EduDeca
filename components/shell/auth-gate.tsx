@@ -4,8 +4,10 @@ import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 
-import { fetchServerProgress, patchDisciplines } from "@/lib/progress/client";
 import { isLineupComplete, lineupIds } from "@/lib/disciplines/selection";
+import { fetchServerProgress, patchDisciplines } from "@/lib/progress/client";
+import { EDUDECA_PENDING_REFERRER_KEY } from "@/lib/referral/referral-code";
+import { syncSignupProfileFromLocal } from "@/lib/signin/sync-signup-profile";
 import { supabase } from "@/lib/supabase/client";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -69,6 +71,11 @@ function applyUserToStore(user: User | null) {
           method: "POST",
           credentials: "include",
         });
+        try {
+          sessionStorage.removeItem(EDUDECA_PENDING_REFERRER_KEY);
+        } catch {
+          /* ignore */
+        }
       } catch {
         /* pending claim is best-effort */
       }
@@ -121,6 +128,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
         applyUserToStore(data.session?.user ?? null);
         if (data.session?.user) {
           await syncProgressFromServer();
+          await syncSignupProfileFromLocal();
         }
         finish();
       })
@@ -138,7 +146,10 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       applyUserToStore(session?.user ?? null);
       if (session?.user) {
-        void syncProgressFromServer();
+        void (async () => {
+          await syncProgressFromServer();
+          await syncSignupProfileFromLocal();
+        })();
       }
       finish();
     });

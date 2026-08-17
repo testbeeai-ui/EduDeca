@@ -4,9 +4,15 @@ import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { WALKTHROUGH_DISCIPLINES_STEP } from "@/data/walkthrough";
 import { isLineupComplete } from "@/lib/disciplines/selection";
+import {
+  isSignupProfileReady,
+  type SignupClassLevel,
+} from "@/lib/signin/signup-profile";
 import { supabase } from "@/lib/supabase/client";
+import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
 
 const AUTH_NEXT_COOKIE = "edudeca_auth_next";
@@ -43,6 +49,10 @@ export function GoogleSignInForm({ title, description }: GoogleSignInFormProps) 
   const searchParams = useSearchParams();
   const disciplineLineup = useAppStore((s) => s.disciplineLineup);
   const setWalkthroughStep = useAppStore((s) => s.setWalkthroughStep);
+  const signupClassLevel = useAppStore((s) => s.signupClassLevel);
+  const setSignupClassLevel = useAppStore((s) => s.setSignupClassLevel);
+  const signupCollege = useAppStore((s) => s.signupCollege);
+  const setSignupCollege = useAppStore((s) => s.setSignupCollege);
   const [signingIn, setSigningIn] = useState(false);
   const [error, setError] = useState<string | null>(() => {
     const authError = searchParams.get("auth_error");
@@ -52,10 +62,23 @@ export function GoogleSignInForm({ title, description }: GoogleSignInFormProps) 
     return null;
   });
 
+  const profileReady = isSignupProfileReady(signupClassLevel, signupCollege);
+  const canStartGoogle = profileReady && !signingIn;
+
+  const selectClass = (level: SignupClassLevel) => {
+    setSignupClassLevel(level);
+    setError(null);
+  };
+
   const handleGoogleSignIn = async () => {
     if (!isLineupComplete(disciplineLineup)) {
       setError("Choose all 10 Decathlon disciplines first, then continue with Google.");
       setWalkthroughStep(WALKTHROUGH_DISCIPLINES_STEP);
+      return;
+    }
+
+    if (!isSignupProfileReady(signupClassLevel, signupCollege)) {
+      setError("Choose your class and enter your college before continuing with Google.");
       return;
     }
 
@@ -111,16 +134,66 @@ export function GoogleSignInForm({ title, description }: GoogleSignInFormProps) 
         <p className="text-muted-foreground">{description}</p>
       </div>
 
+      <div className="space-y-4 text-left">
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-foreground">Which class are you in?</p>
+          <div className="grid grid-cols-2 gap-2">
+            {([11, 12] as const).map((level) => {
+              const selected = signupClassLevel === level;
+              return (
+                <button
+                  key={level}
+                  type="button"
+                  onClick={() => selectClass(level)}
+                  className={cn(
+                    "h-12 rounded-2xl border text-sm font-semibold transition-colors",
+                    selected
+                      ? "border-primary bg-primary/15 text-foreground"
+                      : "border-border bg-muted/20 text-muted-foreground hover:bg-muted/40",
+                  )}
+                  aria-pressed={selected}
+                >
+                  Class {level}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="signup-college" className="text-sm font-medium text-foreground">
+            Which college are you from?
+          </label>
+          <Input
+            id="signup-college"
+            type="text"
+            autoComplete="organization"
+            placeholder="Your school or college name"
+            value={signupCollege}
+            onChange={(e) => {
+              setSignupCollege(e.target.value);
+              setError(null);
+            }}
+          />
+        </div>
+      </div>
+
       <Button
         type="button"
         size="lg"
-        className="h-14 w-full gap-3 rounded-2xl bg-white text-base font-semibold text-zinc-900 hover:bg-white/90"
+        className="h-14 w-full gap-3 rounded-2xl bg-white text-base font-semibold text-zinc-900 hover:bg-white/90 disabled:opacity-50"
         onClick={() => void handleGoogleSignIn()}
-        disabled={signingIn}
+        disabled={!canStartGoogle}
       >
         <GoogleMark className="size-5 shrink-0" />
         {signingIn ? "Connecting to Google…" : "Continue with Google"}
       </Button>
+
+      {!profileReady && !signingIn ? (
+        <p className="text-center text-xs text-muted-foreground">
+          Select your class and enter your college to continue.
+        </p>
+      ) : null}
 
       {error && (
         <p className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-center text-sm text-destructive">
