@@ -12,7 +12,7 @@ interface StepPillsProps {
 
 export function StepPills({ steps, currentStep, onStepClick }: StepPillsProps) {
   return (
-    <div className="flex min-w-max flex-nowrap items-center justify-start gap-2 px-1 sm:min-w-0 sm:flex-wrap sm:justify-center">
+    <div className="flex flex-wrap items-center justify-center gap-2 px-1">
       {steps.map((step) => (
         <button
           key={step.id}

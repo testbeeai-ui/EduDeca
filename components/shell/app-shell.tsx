@@ -9,6 +9,10 @@ import { MobileNav } from "@/components/shell/mobile-nav";
 import { SidebarNav } from "@/components/shell/sidebar-nav";
 import { TopBar } from "@/components/shell/top-bar";
 import { appNavItems } from "@/lib/navigation";
+import {
+  AUTH_PAGE_CENTER_CLASS,
+  AUTH_PAGE_SCROLL_CLASS,
+} from "@/lib/shell/auth-page-layout";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -42,8 +46,13 @@ export function AppShell({ children }: AppShellProps) {
           <header className="flex h-12 shrink-0 items-center border-b border-border/50 px-4 sm:px-6">
             <EduDecaLogo />
           </header>
-          <main className="flex min-h-0 flex-1 items-start justify-center overflow-y-auto px-3 py-3 sm:items-center sm:px-5 sm:py-4">
-            <PageTransition>{children}</PageTransition>
+          <main
+            data-lenis-prevent
+            className={cn(AUTH_PAGE_SCROLL_CLASS, "dark-scrollbar")}
+          >
+            <div className={AUTH_PAGE_CENTER_CLASS}>
+              <PageTransition>{children}</PageTransition>
+            </div>
           </main>
         </div>
       ) : isChallengePage ? (
