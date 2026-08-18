@@ -52,7 +52,7 @@ export const walkthroughSteps: WalkthroughStep[] = [
     stepLabel: "STEP 5 · YOUR PATH",
     title: "Choose your Decathlon disciplines",
     description:
-      "Lock your ten-event lineup — mandatory cores plus three free-path picks that shape how you compete.",
+      "Locked cores stay. Pick one family path — the linked subject follows automatically.",
     icon: "target",
     accent: "amber",
   },

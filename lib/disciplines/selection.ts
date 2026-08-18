@@ -10,12 +10,28 @@ import {
 /** Slot index 1–10 → selected discipline id (null = empty track slot). */
 export type DisciplineLineup = Record<number, DisciplineId | null>;
 
+/** Track C slot — still stored as slot 5; v3 UI locks Entrepreneurship here. */
+export const ENTREPRENEURSHIP_SLOT = 5;
+export const LOCKED_ENTREPRENEURSHIP_ID: DisciplineId = "ent";
+
 export function emptyLineup(): DisciplineLineup {
   const lineup: DisciplineLineup = {};
   for (const slot of DISCIPLINE_SLOTS) {
-    lineup[slot.slot] = slot.kind === "fixed" && slot.fixedId ? slot.fixedId : null;
+    if (slot.kind === "fixed" && slot.fixedId) {
+      lineup[slot.slot] = slot.fixedId;
+    } else if (slot.track === "C") {
+      lineup[slot.slot] = LOCKED_ENTREPRENEURSHIP_ID;
+    } else {
+      lineup[slot.slot] = null;
+    }
   }
   return lineup;
+}
+
+/** Keep slot 5 as Entrepreneurship without touching family tracks. */
+export function lockEntrepreneurshipSlot(lineup: DisciplineLineup): DisciplineLineup {
+  if (lineup[ENTREPRENEURSHIP_SLOT] === LOCKED_ENTREPRENEURSHIP_ID) return lineup;
+  return { ...lineup, [ENTREPRENEURSHIP_SLOT]: LOCKED_ENTREPRENEURSHIP_ID };
 }
 
 export function filledCount(lineup: DisciplineLineup): number {
@@ -34,8 +50,8 @@ export function lineupIds(lineup: DisciplineLineup): DisciplineId[] {
 
 /**
  * Track A + B are linked by family (math ↔ bio).
- * Track C is independent pick-1-of-2.
- * Clicking the already-selected option unchecks it (and clears the linked A/B pair).
+ * Track C is stored in slot 5; the v3 UI locks Entrepreneurship there.
+ * Clicking the already-selected Track A option unchecks it (and clears the linked pair).
  */
 export function selectTrackOption(
   lineup: DisciplineLineup,
