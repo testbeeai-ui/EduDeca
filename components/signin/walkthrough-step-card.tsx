@@ -15,6 +15,10 @@ import {
   WALKTHROUGH_SIGN_IN_STEP,
 } from "@/data/walkthrough";
 import { isLineupComplete } from "@/lib/disciplines/selection";
+import {
+  EDUDECA_PENDING_REFERRER_KEY,
+  displayReferrerName,
+} from "@/lib/referral/referral-code";
 import type { WalkthroughStep } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
@@ -101,6 +105,8 @@ export function WalkthroughStepCard({
         </p>
       </div>
 
+      <ReferralInviteBanner />
+
       {gateHint ? (
         <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-center text-xs font-medium text-amber-200">
           {gateHint}
@@ -120,7 +126,7 @@ export function WalkthroughStepCard({
           transition={{ duration: 0.28, ease: "easeOut" }}
           className={cn(isDisciplinesStep ? "space-y-0" : "space-y-6")}
         >
-          {!isDisciplinesStep ? (
+          {!isDisciplinesStep && !isLastStep ? (
             <div className="flex justify-center">
               <BadgePill accent={step.accent} active>
                 {step.stepLabel}
@@ -177,5 +183,41 @@ export function WalkthroughStepCard({
         </div>
       )}
     </div>
+  );
+}
+
+function ReferralInviteBanner() {
+  const [name, setName] = useState<string | null>(() => {
+    try {
+      return sessionStorage.getItem(EDUDECA_PENDING_REFERRER_KEY);
+    } catch {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    if (name) return;
+    void fetch("/api/referral/pending", { credentials: "include" })
+      .then((r) => r.json() as Promise<{ name?: string | null }>)
+      .then((payload) => {
+        if (!payload.name) return;
+        const next = displayReferrerName(payload.name);
+        try {
+          sessionStorage.setItem(EDUDECA_PENDING_REFERRER_KEY, next);
+        } catch {
+          /* ignore */
+        }
+        setName(next);
+      })
+      .catch(() => undefined);
+  }, [name]);
+
+  if (!name) return null;
+
+  return (
+    <p className="rounded-2xl border border-primary/30 bg-primary/10 px-4 py-3 text-center text-sm">
+      You&apos;re joining as a referral of{" "}
+      <span className="font-semibold text-primary">{name}</span>
+    </p>
   );
 }

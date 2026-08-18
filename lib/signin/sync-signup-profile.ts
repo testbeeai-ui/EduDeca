@@ -1,3 +1,4 @@
+import { citiesForState } from "@/lib/signin/india-locations";
 import {
   buildFillIfEmptyProfilePatch,
   isSignupProfileReady,
@@ -11,8 +12,12 @@ function asSignupClassLevel(value: unknown): SignupClassLevel | null {
   return null;
 }
 
+function asTrimmed(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
 /**
- * After Google auth: write local class/college to profiles only where empty,
+ * After Google auth: write local class/college/location to profiles only where empty,
  * and hydrate the local store from existing profile values when local is blank.
  */
 export async function syncSignupProfileFromLocal(): Promise<void> {
@@ -22,7 +27,7 @@ export async function syncSignupProfileFromLocal(): Promise<void> {
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("class_level, institution_name")
+    .select("class_level, institution_name, stream, state, city")
     .eq("id", userId)
     .maybeSingle();
 
@@ -33,18 +38,27 @@ export async function syncSignupProfileFromLocal(): Promise<void> {
 
   const existing = {
     class_level: (data?.class_level as number | null | undefined) ?? null,
-    institution_name:
-      (data?.institution_name as string | null | undefined) ?? null,
+    institution_name: asTrimmed(data?.institution_name) || null,
+    stream: asTrimmed(data?.stream) || null,
+    state: asTrimmed(data?.state) || null,
+    city: asTrimmed(data?.city) || null,
   };
 
-  // Prefer existing shared profile values into local store when local is empty.
   const existingClass = asSignupClassLevel(existing.class_level);
   if (store.signupClassLevel == null && existingClass != null) {
     store.setSignupClassLevel(existingClass);
   }
-  const existingCollege = (existing.institution_name ?? "").trim();
-  if (!store.signupCollege.trim() && existingCollege) {
-    store.setSignupCollege(existingCollege);
+  if (!store.signupCollege.trim() && existing.institution_name) {
+    store.setSignupCollege(existing.institution_name);
+  }
+  if (!store.signupState.trim() && existing.state) {
+    store.setSignupState(existing.state);
+  }
+  if (!store.signupCity.trim() && existing.city) {
+    const allowed = citiesForState(existing.state ?? store.signupState);
+    if (allowed.includes(existing.city) || allowed.length === 0) {
+      store.setSignupCity(existing.city);
+    }
   }
 
   const next = useAppStore.getState();
@@ -56,6 +70,9 @@ export async function syncSignupProfileFromLocal(): Promise<void> {
     {
       classLevel: next.signupClassLevel as SignupClassLevel,
       college: next.signupCollege,
+      stream: next.signupScienceStream ? "science" : null,
+      state: next.signupState,
+      city: next.signupCity,
     },
     existing,
   );

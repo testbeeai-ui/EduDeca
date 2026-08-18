@@ -4,6 +4,7 @@
  */
 import {
   buildFillIfEmptyProfilePatch,
+  isSignupFormReady,
   isSignupProfileReady,
 } from "../lib/signin/signup-profile";
 
@@ -22,6 +23,33 @@ check("not ready: empty college", isSignupProfileReady(11, "") === false);
 check("not ready: short college", isSignupProfileReady(11, "A") === false);
 check("not ready: whitespace college", isSignupProfileReady(12, "  ") === false);
 check("ready: trims college length", isSignupProfileReady(11, "  AB  ") === true);
+
+const formBase = {
+  classLevel: 12 as const,
+  college: "viswa vignan",
+  scienceStream: true,
+  institutionAck: true,
+  state: "Andhra Pradesh",
+  city: "Visakhapatnam",
+};
+
+check("form ready: all fields", isSignupFormReady(formBase) === true);
+check(
+  "form not ready: science no",
+  isSignupFormReady({ ...formBase, scienceStream: false }) === false,
+);
+check(
+  "form not ready: no ack",
+  isSignupFormReady({ ...formBase, institutionAck: false }) === false,
+);
+check(
+  "form not ready: no state",
+  isSignupFormReady({ ...formBase, state: "" }) === false,
+);
+check(
+  "form not ready: no city",
+  isSignupFormReady({ ...formBase, city: "  " }) === false,
+);
 
 check(
   "patch: both empty → both set",
@@ -95,6 +123,35 @@ check(
     { classLevel: 11, college: "  Trim Me  " },
     { class_level: null, institution_name: null },
   )?.institution_name === "Trim Me",
+);
+
+check(
+  "patch: fills empty stream/state/city",
+  (() => {
+    const patch = buildFillIfEmptyProfilePatch(
+      {
+        classLevel: 12,
+        college: "viswa vignan",
+        stream: "science",
+        state: "Andhra Pradesh",
+        city: "Visakhapatnam",
+      },
+      {
+        class_level: 12,
+        institution_name: "viswa vignan",
+        stream: null,
+        state: null,
+        city: "  ",
+      },
+    );
+    return (
+      patch !== null &&
+      patch.stream === "science" &&
+      patch.state === "Andhra Pradesh" &&
+      patch.city === "Visakhapatnam" &&
+      patch.class_level === undefined
+    );
+  })(),
 );
 
 const failed = cases.filter((c) => !c.pass);

@@ -61,7 +61,7 @@ export const walkthroughSteps: WalkthroughStep[] = [
     slug: "sign-in",
     pillLabel: "Sign in",
     stepLabel: "FINAL STEP · SIGN IN",
-    title: "Start your streak today",
+    title: "Start Today …",
     description: "No passwords. Continue with Google to enter EduDeca.",
     icon: "phone",
     accent: "teal",

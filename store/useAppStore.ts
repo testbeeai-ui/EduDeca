@@ -72,6 +72,14 @@ interface AppState {
   /** Pre-auth walkthrough: college / school name (local until sync). */
   signupCollege: string;
   setSignupCollege: (college: string) => void;
+  signupScienceStream: boolean;
+  setSignupScienceStream: (value: boolean) => void;
+  signupInstitutionAck: boolean;
+  setSignupInstitutionAck: (value: boolean) => void;
+  signupState: string;
+  setSignupState: (state: string) => void;
+  signupCity: string;
+  setSignupCity: (city: string) => void;
   setProctoredPaid: () => void;
   setAntiCaptureEnabled: (enabled: boolean) => void;
   /** Apply server progress snapshot (auth hydrate / admin API / complete). */
@@ -177,6 +185,10 @@ export const useAppStore = create<AppState>()(
           disciplineLineup: emptyLineup(),
           signupClassLevel: null,
           signupCollege: "",
+          signupScienceStream: true,
+          signupInstitutionAck: false,
+          signupState: "",
+          signupCity: "",
         });
       },
       campaignLevel: 1,
@@ -194,6 +206,14 @@ export const useAppStore = create<AppState>()(
       setSignupClassLevel: (level) => set({ signupClassLevel: level }),
       signupCollege: "",
       setSignupCollege: (college) => set({ signupCollege: college }),
+      signupScienceStream: true,
+      setSignupScienceStream: (value) => set({ signupScienceStream: value }),
+      signupInstitutionAck: false,
+      setSignupInstitutionAck: (value) => set({ signupInstitutionAck: value }),
+      signupState: "",
+      setSignupState: (state) => set({ signupState: state }),
+      signupCity: "",
+      setSignupCity: (city) => set({ signupCity: city }),
       setProctoredPaid: () =>
         set({
           isProctoredPaid: true,
@@ -242,6 +262,10 @@ export const useAppStore = create<AppState>()(
         disciplineLineup: state.disciplineLineup,
         signupClassLevel: state.signupClassLevel,
         signupCollege: state.signupCollege,
+        signupScienceStream: state.signupScienceStream,
+        signupInstitutionAck: state.signupInstitutionAck,
+        signupState: state.signupState,
+        signupCity: state.signupCity,
       }),
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);

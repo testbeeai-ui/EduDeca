@@ -3,11 +3,26 @@ export type SignupClassLevel = 11 | 12;
 export type SignupProfileLocal = {
   classLevel: SignupClassLevel;
   college: string;
+  stream?: string | null;
+  state?: string | null;
+  city?: string | null;
 };
 
 export type ProfileClassCollege = {
   class_level: number | null;
   institution_name: string | null;
+  stream?: string | null;
+  state?: string | null;
+  city?: string | null;
+};
+
+export type SignupFormGate = {
+  classLevel: SignupClassLevel | null | undefined;
+  college: string | null | undefined;
+  scienceStream: boolean;
+  institutionAck: boolean;
+  state: string | null | undefined;
+  city: string | null | undefined;
 };
 
 export function isSignupProfileReady(
@@ -16,6 +31,16 @@ export function isSignupProfileReady(
 ): boolean {
   if (classLevel !== 11 && classLevel !== 12) return false;
   return (college ?? "").trim().length >= 2;
+}
+
+/** Google stays disabled until the HTML Step 6 form is complete. */
+export function isSignupFormReady(form: SignupFormGate): boolean {
+  if (!isSignupProfileReady(form.classLevel, form.college)) return false;
+  if (!form.scienceStream) return false;
+  if (!form.institutionAck) return false;
+  if (!(form.state ?? "").trim()) return false;
+  if (!(form.city ?? "").trim()) return false;
+  return true;
 }
 
 /**
@@ -35,6 +60,24 @@ export function buildFillIfEmptyProfilePatch(
   const existingInstitution = (existing.institution_name ?? "").trim();
   if (!existingInstitution) {
     patch.institution_name = local.college.trim();
+  }
+
+  const existingStream = (existing.stream ?? "").trim();
+  const nextStream = (local.stream ?? "").trim();
+  if (!existingStream && nextStream) {
+    patch.stream = nextStream;
+  }
+
+  const existingState = (existing.state ?? "").trim();
+  const nextState = (local.state ?? "").trim();
+  if (!existingState && nextState) {
+    patch.state = nextState;
+  }
+
+  const existingCity = (existing.city ?? "").trim();
+  const nextCity = (local.city ?? "").trim();
+  if (!existingCity && nextCity) {
+    patch.city = nextCity;
   }
 
   return Object.keys(patch).length > 0 ? patch : null;
