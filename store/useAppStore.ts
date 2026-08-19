@@ -12,6 +12,7 @@ import {
   emptyLineup,
   isLineupComplete,
   lineupIds,
+  lockEntrepreneurshipSlot,
   validateLineup,
   type DisciplineLineup,
 } from "@/lib/disciplines/selection";
@@ -72,10 +73,9 @@ interface AppState {
   /** Pre-auth walkthrough: college / school name (local until sync). */
   signupCollege: string;
   setSignupCollege: (college: string) => void;
-  signupScienceStream: boolean;
-  setSignupScienceStream: (value: boolean) => void;
+  /** Level-4 institution-approval acknowledgement (local gate only). */
   signupInstitutionAck: boolean;
-  setSignupInstitutionAck: (value: boolean) => void;
+  setSignupInstitutionAck: (acked: boolean) => void;
   signupState: string;
   setSignupState: (state: string) => void;
   signupCity: string;
@@ -185,7 +185,6 @@ export const useAppStore = create<AppState>()(
           disciplineLineup: emptyLineup(),
           signupClassLevel: null,
           signupCollege: "",
-          signupScienceStream: true,
           signupInstitutionAck: false,
           signupState: "",
           signupCity: "",
@@ -201,17 +200,20 @@ export const useAppStore = create<AppState>()(
       todayCompleted: false,
       antiCaptureEnabled: false,
       disciplineLineup: emptyLineup(),
-      setDisciplineLineup: (lineup) => set({ disciplineLineup: lineup }),
+      setDisciplineLineup: (lineup) =>
+        set({ disciplineLineup: lockEntrepreneurshipSlot(lineup) }),
       signupClassLevel: null,
       setSignupClassLevel: (level) => set({ signupClassLevel: level }),
       signupCollege: "",
       setSignupCollege: (college) => set({ signupCollege: college }),
-      signupScienceStream: true,
-      setSignupScienceStream: (value) => set({ signupScienceStream: value }),
       signupInstitutionAck: false,
-      setSignupInstitutionAck: (value) => set({ signupInstitutionAck: value }),
+      setSignupInstitutionAck: (acked) => set({ signupInstitutionAck: acked }),
       signupState: "",
-      setSignupState: (state) => set({ signupState: state }),
+      setSignupState: (state) =>
+        set((current) => ({
+          signupState: state,
+          signupCity: current.signupState === state ? current.signupCity : "",
+        })),
       signupCity: "",
       setSignupCity: (city) => set({ signupCity: city }),
       setProctoredPaid: () =>
@@ -225,11 +227,12 @@ export const useAppStore = create<AppState>()(
         const fromServer = progress.disciplines
           ? validateLineup(progress.disciplines)
           : null;
-        if (fromServer) {
-          set({ ...patch, disciplineLineup: fromServer });
-          return;
-        }
-        set(patch);
+        set({
+          ...patch,
+          disciplineLineup: lockEntrepreneurshipSlot(
+            fromServer ?? get().disciplineLineup,
+          ),
+        });
       },
       skipDailyWait: () =>
         set(progressSlice(skipDailyWaitProgress(snapshotFromState(get())))),
@@ -262,7 +265,6 @@ export const useAppStore = create<AppState>()(
         disciplineLineup: state.disciplineLineup,
         signupClassLevel: state.signupClassLevel,
         signupCollege: state.signupCollege,
-        signupScienceStream: state.signupScienceStream,
         signupInstitutionAck: state.signupInstitutionAck,
         signupState: state.signupState,
         signupCity: state.signupCity,
@@ -283,6 +285,7 @@ export const useAppStore = create<AppState>()(
         });
         state.todayCompleted = locked.todayCompleted;
         state.subjectLevels = locked.subjectLevels;
+        state.disciplineLineup = lockEntrepreneurshipSlot(state.disciplineLineup);
       },
     }
   )
@@ -321,7 +324,7 @@ export function useSubjectsWithProgress() {
     ? selectedIds
         .map((id) => subjects.find((s) => s.id === id))
         .filter((s): s is (typeof subjects)[number] => Boolean(s))
-    : subjects.slice(0, 10);
+    : subjects.filter((s) => s.id !== "cs").slice(0, 10);
 
   return catalog.map((s) => ({
     ...s,

@@ -3,29 +3,33 @@ export type SignupClassLevel = 11 | 12;
 export type SignupProfileLocal = {
   classLevel: SignupClassLevel;
   college: string;
-  stream?: string | null;
-  state?: string | null;
-  city?: string | null;
+  state: string;
+  city: string;
 };
 
-export type ProfileClassCollege = {
-  class_level: number | null;
-  institution_name: string | null;
-  stream?: string | null;
-  state?: string | null;
-  city?: string | null;
-};
-
-export type SignupFormGate = {
+export type SignupFormInput = {
   classLevel: SignupClassLevel | null | undefined;
   college: string | null | undefined;
-  scienceStream: boolean;
   institutionAck: boolean;
   state: string | null | undefined;
   city: string | null | undefined;
 };
 
-export function isSignupProfileReady(
+export type EduDecaProfileRow = {
+  class_level: number | null;
+  institution_name: string | null;
+  state: string | null;
+  city: string | null;
+  email?: string | null;
+};
+
+export function shouldWriteEduDecaEmail(
+  existingEmail: string | null | undefined,
+): boolean {
+  return !(existingEmail ?? "").trim();
+}
+
+export function isSignupClassCollegeReady(
   classLevel: SignupClassLevel | null | undefined,
   college: string | null | undefined,
 ): boolean {
@@ -33,25 +37,30 @@ export function isSignupProfileReady(
   return (college ?? "").trim().length >= 2;
 }
 
-/** Google stays disabled until the HTML Step 6 form is complete. */
-export function isSignupFormReady(form: SignupFormGate): boolean {
-  if (!isSignupProfileReady(form.classLevel, form.college)) return false;
-  if (!form.scienceStream) return false;
-  if (!form.institutionAck) return false;
-  if (!(form.state ?? "").trim()) return false;
-  if (!(form.city ?? "").trim()) return false;
-  return true;
+export function isSignupLocationReady(
+  state: string | null | undefined,
+  city: string | null | undefined,
+): boolean {
+  return (state ?? "").trim().length > 0 && (city ?? "").trim().length > 0;
+}
+
+export function isSignupProfileReady(input: SignupFormInput): boolean {
+  return (
+    isSignupClassCollegeReady(input.classLevel, input.college) &&
+    input.institutionAck === true &&
+    isSignupLocationReady(input.state, input.city)
+  );
 }
 
 /**
- * Build a profiles update that only fills null/blank columns.
+ * Build an EduDeca profile patch that only fills null/blank columns.
  * Returns null when nothing should be written (never overwrites set values).
  */
-export function buildFillIfEmptyProfilePatch(
+export function buildFillIfEmptyEduDecaProfilePatch(
   local: SignupProfileLocal,
-  existing: ProfileClassCollege,
-): Partial<ProfileClassCollege> | null {
-  const patch: Partial<ProfileClassCollege> = {};
+  existing: EduDecaProfileRow,
+): Partial<EduDecaProfileRow> | null {
+  const patch: Partial<EduDecaProfileRow> = {};
 
   if (existing.class_level == null) {
     patch.class_level = local.classLevel;
@@ -62,22 +71,14 @@ export function buildFillIfEmptyProfilePatch(
     patch.institution_name = local.college.trim();
   }
 
-  const existingStream = (existing.stream ?? "").trim();
-  const nextStream = (local.stream ?? "").trim();
-  if (!existingStream && nextStream) {
-    patch.stream = nextStream;
-  }
-
   const existingState = (existing.state ?? "").trim();
-  const nextState = (local.state ?? "").trim();
-  if (!existingState && nextState) {
-    patch.state = nextState;
+  if (!existingState && local.state.trim()) {
+    patch.state = local.state.trim();
   }
 
   const existingCity = (existing.city ?? "").trim();
-  const nextCity = (local.city ?? "").trim();
-  if (!existingCity && nextCity) {
-    patch.city = nextCity;
+  if (!existingCity && local.city.trim()) {
+    patch.city = local.city.trim();
   }
 
   return Object.keys(patch).length > 0 ? patch : null;

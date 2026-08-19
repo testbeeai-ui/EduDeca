@@ -17,7 +17,7 @@ const tickerItems = [
   "Diya from Pune qualified for the Metro Finals shortlist 🏆",
   "Rohan from Lucknow completed a 14-day streak ⚡",
   "Meher from Chennai jumped to Rank #312 nationally 📈",
-  "Ishaan from Jaipur unlocked Level 5 in AI & Computer Science 🤖",
+  "Ishaan from Jaipur unlocked Level 5 in Entrepreneurship 💡",
   "Ananya from Kochi finished this week's Chemistry proctored round 🧪",
   "Vivaan from Guwahati joined 12,000+ students competing this month 🇮🇳",
 ];

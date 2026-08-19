@@ -4,7 +4,11 @@ import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 
-import { isLineupComplete, lineupIds } from "@/lib/disciplines/selection";
+import {
+  isLineupComplete,
+  lineupIds,
+  lineupIdsMatch,
+} from "@/lib/disciplines/selection";
 import { fetchServerProgress, patchDisciplines } from "@/lib/progress/client";
 import { EDUDECA_PENDING_REFERRER_KEY } from "@/lib/referral/referral-code";
 import { syncSignupProfileFromLocal } from "@/lib/signin/sync-signup-profile";
@@ -92,9 +96,12 @@ async function syncProgressFromServer() {
   const store = useAppStore.getState();
   store.hydrateProgress(progress);
 
-  // Push local walkthrough lineup if server has none yet.
-  if (!progress.disciplines?.length && isLineupComplete(store.disciplineLineup)) {
-    const synced = await patchDisciplines(lineupIds(store.disciplineLineup));
+  const lineup = store.disciplineLineup;
+  if (!isLineupComplete(lineup)) return;
+
+  const ids = lineupIds(lineup);
+  if (!lineupIdsMatch(progress.disciplines, ids)) {
+    const synced = await patchDisciplines(ids);
     if (synced) store.hydrateProgress(synced);
   }
 }

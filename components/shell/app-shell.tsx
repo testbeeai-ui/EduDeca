@@ -10,6 +10,7 @@ import { SidebarNav } from "@/components/shell/sidebar-nav";
 import { TopBar } from "@/components/shell/top-bar";
 import { appNavItems } from "@/lib/navigation";
 import {
+  AUTH_PAGE_CENTER_CHILD_CLASS,
   AUTH_PAGE_CENTER_CLASS,
   AUTH_PAGE_SCROLL_CLASS,
 } from "@/lib/shell/auth-page-layout";
@@ -51,7 +52,9 @@ export function AppShell({ children }: AppShellProps) {
             className={cn(AUTH_PAGE_SCROLL_CLASS, "dark-scrollbar")}
           >
             <div className={AUTH_PAGE_CENTER_CLASS}>
-              <PageTransition>{children}</PageTransition>
+              <div className={AUTH_PAGE_CENTER_CHILD_CLASS}>
+                <PageTransition>{children}</PageTransition>
+              </div>
             </div>
           </main>
         </div>
@@ -70,7 +73,7 @@ export function AppShell({ children }: AppShellProps) {
             <main
               data-lenis-prevent
               className={cn(
-                "min-h-0 flex-1 overscroll-contain px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8 overflow-y-auto",
+                "min-h-0 flex-1 overscroll-contain px-3 py-3 sm:px-5 sm:py-4 lg:px-6 lg:py-4 overflow-y-auto",
                 !hasHydrated && "opacity-0"
               )}
             >

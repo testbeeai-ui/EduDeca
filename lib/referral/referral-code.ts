@@ -23,6 +23,17 @@ export function buildEduDecaShareUrl(origin: string, code: string): string {
   return `${base}/join?ref=${encodeURIComponent(normalized)}`;
 }
 
+export const EDUDECA_PENDING_REFERRER_KEY = "edudeca_pending_referrer_preview";
+
+/** Profile name for join copy; emails collapse to a first token. */
+export function displayReferrerName(name: string | null | undefined): string {
+  const raw = (name ?? "").trim();
+  if (!raw) return "a friend";
+  if (!raw.includes("@")) return raw;
+  const token = raw.split(/[@._-]/).find((part) => part.length > 0) ?? "";
+  return token ? token.charAt(0).toUpperCase() + token.slice(1) : "a friend";
+}
+
 export function initialsFromName(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "?";

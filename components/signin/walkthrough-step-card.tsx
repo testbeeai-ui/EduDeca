@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, Trophy } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { BadgePill } from "@/components/common/badge-pill";
@@ -84,8 +84,8 @@ export function WalkthroughStepCard({
   return (
     <div
       className={cn(
-        "mx-auto flex w-full flex-col",
-        isDisciplinesStep ? "max-w-6xl gap-2.5" : "max-w-2xl gap-6 sm:gap-8",
+        "mx-auto flex w-full min-w-0 flex-col",
+        isDisciplinesStep ? "max-w-6xl gap-3 sm:gap-3.5" : "max-w-2xl gap-6 sm:gap-8",
       )}
     >
       <div className="flex items-center justify-between gap-3">
@@ -113,9 +113,7 @@ export function WalkthroughStepCard({
         </p>
       ) : null}
 
-      <div className="overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <StepPills steps={steps} currentStep={currentStep} onStepClick={handleStepClick} />
-      </div>
+      <StepPills steps={steps} currentStep={currentStep} onStepClick={handleStepClick} />
 
       <AnimatePresence mode="wait">
         <motion.div
@@ -126,7 +124,7 @@ export function WalkthroughStepCard({
           transition={{ duration: 0.28, ease: "easeOut" }}
           className={cn(isDisciplinesStep ? "space-y-0" : "space-y-6")}
         >
-          {!isDisciplinesStep && !isLastStep ? (
+          {!isDisciplinesStep ? (
             <div className="flex justify-center">
               <BadgePill accent={step.accent} active>
                 {step.stepLabel}
@@ -135,7 +133,18 @@ export function WalkthroughStepCard({
           ) : null}
 
           {isLastStep && lineupReady ? (
-            <GoogleSignInForm title={step.title} description={step.description} />
+            <div className="space-y-6">
+              <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-2 text-center text-sm sm:text-base">
+                <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-full border border-amber-400/80 bg-amber-500/10">
+                  <Trophy className="size-3.5 text-amber-400" strokeWidth={2} />
+                </span>
+                <span className="leading-snug text-amber-400">
+                  Continue your journey to become a chosen{" "}
+                  <span className="font-bold text-white">Whiz360</span>
+                </span>
+              </p>
+              <GoogleSignInForm title={step.title} description={step.description} />
+            </div>
           ) : isDisciplinesStep || (isLastStep && !lineupReady) ? (
             <DisciplinePicker
               lineup={disciplineLineup}

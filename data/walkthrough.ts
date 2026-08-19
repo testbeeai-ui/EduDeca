@@ -8,7 +8,7 @@ export const walkthroughSteps: WalkthroughStep[] = [
     stepLabel: "STEP 1 · JOIN FREE",
     title: "10 subjects. 10 questions each.",
     description:
-      "Class XI & XII questions across Physics, Chemistry, Mathematics, Applied Mathematics, Biology, Biotechnology, AI & Computer Science, Entrepreneurship, Verbal Ability, Quantitative Ability, Analytical Ability, General Knowledge, and Financial Literacy — pick your path, free forever from Level 1.",
+      "Class XI & XII questions across Physics, Chemistry, Mathematics, Applied Mathematics, Biology, Biotechnology, Entrepreneurship, Verbal Ability, Quantitative Ability, Analytical Ability, General Knowledge, and Financial Literacy — pick your path, free forever from Level 1.",
     icon: "target",
     accent: "teal",
   },

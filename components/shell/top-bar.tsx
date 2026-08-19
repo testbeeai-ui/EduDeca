@@ -3,9 +3,9 @@
 import Link from "next/link";
 
 import { NotificationIcon } from "@/components/shell/notification-icon";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { currentUser } from "@/data/user";
-import { cn } from "@/lib/utils";
+import { cn, initialsFromName } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
 
 interface TopBarProps {
@@ -15,11 +15,14 @@ interface TopBarProps {
 
 export function TopBar({ title, className }: TopBarProps) {
   const isSignedIn = useAppStore((s) => s.isSignedIn);
+  const avatarUrl = useAppStore((s) => s.avatarUrl);
+  const userName = useAppStore((s) => s.userName);
+  const displayInitials = userName ? initialsFromName(userName) : currentUser.initials;
 
   return (
     <header
       className={cn(
-        "flex h-14 shrink-0 items-center justify-between border-b border-white/10 bg-background/60 backdrop-blur-xl px-4 md:px-6 lg:px-8 shadow-sm shadow-black/20",
+        "relative z-50 flex h-14 shrink-0 items-center justify-between border-b border-white/10 bg-background/60 backdrop-blur-xl px-4 md:px-6 lg:px-8 shadow-sm shadow-black/20",
         className
       )}
     >
@@ -36,8 +39,9 @@ export function TopBar({ title, className }: TopBarProps) {
             aria-label="Open profile"
           >
             <Avatar className="size-8">
+              {avatarUrl ? <AvatarImage src={avatarUrl} alt="" className="object-cover" /> : null}
               <AvatarFallback className={cn("text-xs font-semibold text-white", currentUser.avatarColor)}>
-                {currentUser.initials}
+                {displayInitials}
               </AvatarFallback>
             </Avatar>
           </Link>

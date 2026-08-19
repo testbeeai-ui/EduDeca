@@ -3,6 +3,7 @@
  * Run: npx tsx scripts/test-auth-page-layout.ts
  */
 import {
+  AUTH_PAGE_CENTER_CHILD_CLASS,
   AUTH_PAGE_CENTER_CLASS,
   AUTH_PAGE_SCROLL_CLASS,
   isUnsafeCenteredOverflowFlex,
@@ -34,9 +35,14 @@ check(
 );
 
 check(
-  "centering uses min-h-full inner wrapper",
+  "centering uses min-h-full inner wrapper that top-aligns overflow",
   AUTH_PAGE_CENTER_CLASS.includes("min-h-full") &&
-    AUTH_PAGE_CENTER_CLASS.includes("items-center"),
+    AUTH_PAGE_CENTER_CLASS.includes("items-start"),
+);
+
+check(
+  "centering child uses my-auto so short steps stay vertically centered",
+  AUTH_PAGE_CENTER_CHILD_CLASS.includes("my-auto"),
 );
 
 check(

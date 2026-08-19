@@ -6,7 +6,8 @@ import {
   shuffleWithSeed,
 } from "@/lib/challenge/shuffle";
 import { LINEUP_SIZE, type DisciplineId } from "@/data/disciplines";
-import { isLineupComplete, validateLineup } from "@/lib/disciplines/selection";
+import { parseQuestionOptions } from "@/lib/challenge/parse-options";
+import { isLineupComplete, lineupIds, validateLineup } from "@/lib/disciplines/selection";
 import { getOrCreateProgress } from "@/lib/progress/server";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import type { ChallengeQuestion } from "@/lib/types";
@@ -20,19 +21,6 @@ const ALL_SUBJECTS: DisciplineId[] = [
   "biotech",
   "cs",
   "ent",
-  "eng",
-  "eco",
-  "log",
-  "gk",
-  "fin",
-];
-
-const FALLBACK_LINEUP: DisciplineId[] = [
-  "phy",
-  "che",
-  "mat",
-  "amat",
-  "cs",
   "eng",
   "eco",
   "log",
@@ -67,13 +55,9 @@ function parseDisciplinesParam(raw: string | null): DisciplineId[] | null {
     .filter(Boolean);
   const lineup = validateLineup(ids);
   if (!lineup || !isLineupComplete(lineup)) return null;
-  return ids as DisciplineId[];
+  return lineupIds(lineup);
 }
 
-function parseOptions(raw: QuestionRow["options"]): string[] {
-  if (Array.isArray(raw)) return raw.map(String);
-  return (JSON.parse(String(raw)) as string[]).map(String);
-}
 
 /**
  * One MCQ per selected Decathlon discipline for the campaign level.
@@ -90,28 +74,30 @@ export async function GET(request: NextRequest) {
   // Free-zone bank is L1–L3 only; never mix another level's questions.
   const questionLevel = Math.min(Math.max(level, 1), 3);
   const supabase = await createSupabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-  let subjectOrder = parseDisciplinesParam(request.nextUrl.searchParams.get("disciplines"));
+  let subjectOrder: DisciplineId[] | null = null;
+  try {
+    const progress = await getOrCreateProgress(supabase, user);
+    const fromDb = progress.disciplines ? validateLineup(progress.disciplines) : null;
+    if (fromDb && isLineupComplete(fromDb)) {
+      subjectOrder = lineupIds(fromDb);
+    }
+  } catch (err) {
+    console.warn("[challenge/questions] progress lookup", err);
+  }
 
   if (!subjectOrder) {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (user) {
-      try {
-        const progress = await getOrCreateProgress(supabase, user);
-        const fromDb = progress.disciplines ? validateLineup(progress.disciplines) : null;
-        if (fromDb && isLineupComplete(fromDb)) {
-          subjectOrder = progress.disciplines as DisciplineId[];
-        }
-      } catch (err) {
-        console.warn("[challenge/questions] progress lookup", err);
-      }
-    }
+    subjectOrder = parseDisciplinesParam(request.nextUrl.searchParams.get("disciplines"));
   }
 
   if (!subjectOrder || subjectOrder.length !== LINEUP_SIZE) {
-    subjectOrder = FALLBACK_LINEUP;
+    return NextResponse.json({ error: "No disciplines lineup" }, { status: 400 });
   }
 
   const allowed = new Set(ALL_SUBJECTS);
@@ -162,11 +148,16 @@ export async function GET(request: NextRequest) {
     }
     const pickIndex = (seed + idx * 17) % pool.length;
     const row = pool[pickIndex]!;
+    const options = parseQuestionOptions(row.options);
+    if (options.length < 2) {
+      missing.push(subjectId);
+      return;
+    }
     const base: ChallengeQuestion = {
       id: row.id,
       subjectId: row.subject_id,
       stem: row.stem,
-      options: parseOptions(row.options),
+      options,
       correctIndex: row.correct_index,
       explanation: row.explanation ?? undefined,
       difficultyRating: row.difficulty_rating ?? questionLevel,

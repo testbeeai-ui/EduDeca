@@ -147,7 +147,7 @@ export const DISCIPLINE_SLOTS: DisciplineSlotDef[] = [
   { slot: 2, kind: "fixed", fixedId: "che" },
   { slot: 3, kind: "track", track: "A", options: ["mat", "bio"] },
   { slot: 4, kind: "track", track: "B", options: ["amat", "biotech"] },
-  { slot: 5, kind: "track", track: "C", options: ["cs", "ent"] },
+  { slot: 5, kind: "track", track: "C", options: ["ent"] },
   { slot: 6, kind: "fixed", fixedId: "eng" },
   { slot: 7, kind: "fixed", fixedId: "eco" },
   { slot: 8, kind: "fixed", fixedId: "log" },

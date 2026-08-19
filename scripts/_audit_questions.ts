@@ -1,5 +1,7 @@
-﻿import katex from "katex";
-import { wrapNakedLatex, splitMathChunks } from "../lib/challenge/math-text.ts";
+import katex from "katex";
+import { wrapNakedLatex, splitMathChunks } from "../lib/challenge/math-text";
+
+
 
 type Q = {
   id: string;

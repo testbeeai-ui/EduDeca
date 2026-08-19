@@ -1,7 +1,8 @@
-import { citiesForState } from "@/lib/signin/india-locations";
 import {
-  buildFillIfEmptyProfilePatch,
-  isSignupProfileReady,
+  buildFillIfEmptyEduDecaProfilePatch,
+  isSignupClassCollegeReady,
+  shouldWriteEduDecaEmail,
+  type EduDecaProfileRow,
   type SignupClassLevel,
 } from "@/lib/signin/signup-profile";
 import { supabase } from "@/lib/supabase/client";
@@ -12,13 +13,14 @@ function asSignupClassLevel(value: unknown): SignupClassLevel | null {
   return null;
 }
 
-function asTrimmed(value: unknown): string {
+function asText(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
 /**
- * After Google auth: write local class/college/location to profiles only where empty,
- * and hydrate the local store from existing profile values when local is blank.
+ * After Google auth: write local class/college/location to edudeca_profiles
+ * without overwriting existing non-empty values, and hydrate the local store
+ * from existing EduDeca profile values when local is blank.
  */
 export async function syncSignupProfileFromLocal(): Promise<void> {
   const store = useAppStore.getState();
@@ -26,65 +28,72 @@ export async function syncSignupProfileFromLocal(): Promise<void> {
   if (!userId) return;
 
   const { data, error } = await supabase
-    .from("profiles")
-    .select("class_level, institution_name, stream, state, city")
+    .from("edudeca_profiles")
+    .select("class_level, institution_name, state, city, email")
     .eq("id", userId)
     .maybeSingle();
 
   if (error) {
-    console.error("[signup-profile] profiles select failed", error);
+    console.error("[signup-profile] edudeca_profiles select failed", error);
     return;
   }
 
-  const existing = {
+  const existing: EduDecaProfileRow = {
     class_level: (data?.class_level as number | null | undefined) ?? null,
-    institution_name: asTrimmed(data?.institution_name) || null,
-    stream: asTrimmed(data?.stream) || null,
-    state: asTrimmed(data?.state) || null,
-    city: asTrimmed(data?.city) || null,
+    institution_name:
+      (data?.institution_name as string | null | undefined) ?? null,
+    state: (data?.state as string | null | undefined) ?? null,
+    city: (data?.city as string | null | undefined) ?? null,
+    email: (data?.email as string | null | undefined) ?? null,
   };
 
   const existingClass = asSignupClassLevel(existing.class_level);
   if (store.signupClassLevel == null && existingClass != null) {
     store.setSignupClassLevel(existingClass);
   }
-  if (!store.signupCollege.trim() && existing.institution_name) {
-    store.setSignupCollege(existing.institution_name);
+  const existingCollege = asText(existing.institution_name);
+  if (!store.signupCollege.trim() && existingCollege) {
+    store.setSignupCollege(existingCollege);
   }
-  if (!store.signupState.trim() && existing.state) {
-    store.setSignupState(existing.state);
+  const existingState = asText(existing.state);
+  if (!store.signupState.trim() && existingState) {
+    store.setSignupState(existingState);
   }
-  if (!store.signupCity.trim() && existing.city) {
-    const allowed = citiesForState(existing.state ?? store.signupState);
-    if (allowed.includes(existing.city) || allowed.length === 0) {
-      store.setSignupCity(existing.city);
-    }
+  const existingCity = asText(existing.city);
+  if (!store.signupCity.trim() && existingCity) {
+    store.setSignupCity(existingCity);
   }
 
   const next = useAppStore.getState();
-  if (!isSignupProfileReady(next.signupClassLevel, next.signupCollege)) {
-    return;
-  }
+  const patch = isSignupClassCollegeReady(next.signupClassLevel, next.signupCollege)
+    ? buildFillIfEmptyEduDecaProfilePatch(
+        {
+          classLevel: next.signupClassLevel as SignupClassLevel,
+          college: next.signupCollege,
+          state: next.signupState,
+          city: next.signupCity,
+        },
+        existing,
+      )
+    : null;
 
-  const patch = buildFillIfEmptyProfilePatch(
+  const { data: authData } = await supabase.auth.getUser();
+  if (authData.user?.id !== userId) return;
+  const sessionEmail = authData.user.email?.trim() ?? "";
+  const writeEmail = shouldWriteEduDecaEmail(existing.email) && sessionEmail.length > 0;
+
+  if (!patch && !writeEmail) return;
+
+  const { error: upsertError } = await supabase.from("edudeca_profiles").upsert(
     {
-      classLevel: next.signupClassLevel as SignupClassLevel,
-      college: next.signupCollege,
-      stream: next.signupScienceStream ? "science" : null,
-      state: next.signupState,
-      city: next.signupCity,
+      id: userId,
+      ...(patch ?? {}),
+      ...(writeEmail ? { email: sessionEmail } : {}),
     },
-    existing,
+    { onConflict: "id" },
   );
 
-  if (!patch) return;
-
-  const { error: updateError } = await supabase
-    .from("profiles")
-    .update(patch)
-    .eq("id", userId);
-
-  if (updateError) {
-    console.error("[signup-profile] profiles update failed", updateError);
+  if (upsertError) {
+    console.error("[signup-profile] edudeca_profiles upsert failed", upsertError);
   }
 }
