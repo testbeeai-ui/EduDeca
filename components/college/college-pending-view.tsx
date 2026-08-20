@@ -112,6 +112,12 @@ export function CollegePendingView() {
               ? "Redirecting you to the college portal…"
               : "Our team will verify your college registration. Thank you for your time — we will be in touch once your institution is approved. You will not have dashboard access until verification is complete."}
         </p>
+        {status === "pending" || status === "error" ? (
+          <p className={styles.privacyNote}>
+            This Google account is tied to a <b style={{ color: "var(--cr-text)" }}>college</b>{" "}
+            registration. Use a different Google account to sign in as a student.
+          </p>
+        ) : null}
         {status !== "submitting" && status !== "approved" ? (
           <button type="button" className={styles.googleBtn} onClick={() => void handleSignOut()}>
             Sign out

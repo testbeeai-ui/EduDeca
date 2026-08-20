@@ -33,7 +33,14 @@ function GoogleMark({ className }: { className?: string }) {
   );
 }
 
-export function ReturningUserLogin({ className }: { className?: string }) {
+export function ReturningUserLogin({
+  className,
+  compact = false,
+}: {
+  className?: string;
+  /** Tighter layout for the mobile bar above the tab nav. */
+  compact?: boolean;
+}) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -77,31 +84,28 @@ export function ReturningUserLogin({ className }: { className?: string }) {
   };
 
   return (
-    <div
-      className={cn(
-        "border-t border-white/10 bg-sidebar/40 p-3",
-        className,
-      )}
-    >
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-        Already a user?
-      </p>
-      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-        Skip the walkthrough and sign back in with Google. New accounts should use{" "}
-        <span className="text-foreground/90">Sign-in</span> instead.
+    <div className={cn("w-full min-w-0 overflow-visible", className)}>
+      <p
+        className={cn(
+          "truncate font-medium text-muted-foreground",
+          compact ? "mb-2 text-xs" : "mb-0 px-1 text-sm",
+        )}
+      >
+        Already a user
       </p>
       <button
         type="button"
         disabled={busy}
         onClick={() => void startReturningGoogle()}
         className={cn(
-          "mt-3 flex h-11 w-full items-center justify-center gap-2.5 rounded-xl",
-          "bg-white text-sm font-semibold text-zinc-900 transition hover:bg-white/90",
+          "flex w-full items-center justify-center gap-2.5 rounded-xl",
+          "bg-white font-semibold text-zinc-900 shadow-sm transition hover:bg-white/90",
           "disabled:cursor-not-allowed disabled:opacity-60",
+          compact ? "mt-0 h-10 text-sm" : "mt-4 h-11 text-sm",
         )}
       >
         <GoogleMark className="size-4 shrink-0" />
-        {busy ? "Connecting…" : "Log in with Google"}
+        <span className="truncate">{busy ? "Connecting…" : "Continue with Google"}</span>
       </button>
       {error ? (
         <p className="mt-2 text-center text-[11px] text-destructive">{error}</p>

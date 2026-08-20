@@ -1,11 +1,12 @@
 "use client";
 
 import { CameraOff, LogOut, Mail, School, Settings, Shield } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { GlassCard } from "@/components/common/glass-card";
 import { MotionFade } from "@/components/common/motion-fade";
-import { AdminToolsShell } from "@/components/profile/admin-tools-shell";
+import { TesterToolsPanel } from "@/components/profile/tester-tools-panel";
 import { PageHeader } from "@/components/shell/page-header";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -122,7 +123,19 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {isAdmin ? <AdminToolsShell /> : null}
+          <TesterToolsPanel />
+
+          {isAdmin ? (
+            <div className="rounded-xl border border-border/60 bg-muted/20 p-4">
+              <p className="text-sm font-medium">Admin console</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Verify college registrations from the dedicated admin workspace.
+              </p>
+              <Button asChild size="sm" className="mt-3">
+                <Link href="/admin">Open admin console</Link>
+              </Button>
+            </div>
+          ) : null}
 
           {isAdmin ? (
             <div className="space-y-3">

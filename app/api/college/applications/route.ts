@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { isTesterInvestorEmail } from "@/lib/admin/tester-allowlist";
 import {
   getCollegeApplicationForUser,
+  listAllCollegeApplicationsForAdmin,
   listPendingCollegeApplications,
   upsertCollegeApplication,
   verifyCollegeApplication,
@@ -46,8 +47,9 @@ export async function GET() {
 
   if (isTesterInvestorEmail(user.email)) {
     const pending = await listPendingCollegeApplications();
+    const applications = await listAllCollegeApplicationsForAdmin();
     const application = await getCollegeApplicationForUser(user.id);
-    return NextResponse.json({ pending, application });
+    return NextResponse.json({ pending, applications, application });
   }
 
   const application = await getCollegeApplicationForUser(user.id);

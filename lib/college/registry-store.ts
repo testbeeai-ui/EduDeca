@@ -28,6 +28,10 @@ export type CollegeApplication = {
   contactMobile: string;
   contactEmail: string;
   pledge: boolean;
+  /** Optional Class XI student-list upload filename (file bytes not stored). */
+  xiFileName: string | null;
+  /** Optional Class XII student-list upload filename (file bytes not stored). */
+  xiiFileName: string | null;
 };
 
 export type CollegeRosterStudent = {
@@ -110,6 +114,8 @@ export function draftToApplicationFields(draft: CollegeRegistrationDraft) {
     contactMobile: draft.contactMobile.trim(),
     contactEmail: draft.contactEmail.trim(),
     pledge: draft.pledge,
+    xiFileName: draft.xiFileName?.trim() || null,
+    xiiFileName: draft.xiiFileName?.trim() || null,
   };
 }
 
@@ -175,6 +181,29 @@ export async function listPendingCollegeApplications(): Promise<CollegeApplicati
   return registry.applications
     .filter((a) => a.status === "pending")
     .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt));
+}
+
+export type CollegeApplicationAdminView = CollegeApplication & {
+  roster: CollegeRosterStudent[];
+};
+
+export async function listAllCollegeApplicationsForAdmin(): Promise<
+  CollegeApplicationAdminView[]
+> {
+  const registry = await readCollegeRegistry();
+  const apps = [...registry.applications].sort((a, b) =>
+    b.submittedAt.localeCompare(a.submittedAt),
+  );
+  return apps.map((app) => {
+    const key = normalizeInstitutionName(app.institutionName);
+    const roster = key ? registry.rosters[key] ?? [] : [];
+    return {
+      ...app,
+      xiFileName: app.xiFileName ?? null,
+      xiiFileName: app.xiiFileName ?? null,
+      roster: [...roster].sort((a, b) => a.displayName.localeCompare(b.displayName)),
+    };
+  });
 }
 
 export async function verifyCollegeApplication(
