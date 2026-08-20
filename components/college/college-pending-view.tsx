@@ -81,6 +81,34 @@ export function CollegePendingView() {
     };
   }, [hasHydrated, isSignedIn, router]);
 
+  // After admin verifies, pick up approval without a hard refresh.
+  useEffect(() => {
+    if (!hasHydrated || !isSignedIn || status !== "pending") return;
+
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const mine = await fetch("/api/college/applications", { credentials: "include" });
+        if (!mine.ok || cancelled) return;
+        const json = (await mine.json()) as {
+          application?: { status?: string } | null;
+        };
+        if (json.application?.status === "approved" && !cancelled) {
+          setStatus("approved");
+          router.replace("/college/portal");
+        }
+      } catch {
+        /* ignore poll errors */
+      }
+    };
+
+    const id = window.setInterval(() => void tick(), 4000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [hasHydrated, isSignedIn, status, router]);
+
   const handleSignOut = async () => {
     signOut();
     await supabase.auth.signOut({ scope: "local" });

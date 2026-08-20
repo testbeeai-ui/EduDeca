@@ -53,7 +53,7 @@ export default function ProfilePage() {
   const handleLogout = async () => {
     signOut();
     await supabase.auth.signOut({ scope: "local" });
-    router.replace("/signin");
+    router.replace("/home");
   };
 
   return (

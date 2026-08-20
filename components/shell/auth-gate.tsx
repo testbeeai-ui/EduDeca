@@ -17,6 +17,10 @@ const PROTECTED_ACTIVITY_PATHS = new Set(["/challenge"]);
 const COLLEGE_SIGNIN_PATH = "/college/signin";
 const COLLEGE_PENDING_PATH = "/college/pending";
 const COLLEGE_PORTAL_PATH = "/college/portal";
+const COLLEGE_AUTH_REQUIRED_PATHS = new Set([
+  COLLEGE_PENDING_PATH,
+  COLLEGE_PORTAL_PATH,
+]);
 const STUDENT_APP_PATHS = new Set([
   "/home",
   "/levels",
@@ -218,6 +222,11 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    if (!isSignedIn && COLLEGE_AUTH_REQUIRED_PATHS.has(pathname)) {
+      router.replace(COLLEGE_SIGNIN_PATH);
+      return;
+    }
+
     if (!isSignedIn) return;
 
     let cancelled = false;
@@ -300,6 +309,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   }
 
   if (!isSignedIn && PROTECTED_ACTIVITY_PATHS.has(pathname)) return null;
+  if (!isSignedIn && COLLEGE_AUTH_REQUIRED_PATHS.has(pathname)) return null;
   if (isSignedIn && pathname === "/signin") {
     const store = useAppStore.getState();
     const disciplines = isLineupComplete(store.disciplineLineup)

@@ -81,6 +81,8 @@ export function CollegePortalView() {
   const signOut = useAppStore((s) => s.signOut);
   const userName = useAppStore((s) => s.userName);
   const email = useAppStore((s) => s.email);
+  const isSignedIn = useAppStore((s) => s.isSignedIn);
+  const hasHydrated = useAppStore((s) => s.hasHydrated);
   const [data, setData] = useState<PortalPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -92,10 +94,31 @@ export function CollegePortalView() {
     setLoading(true);
     setError(null);
     try {
+      // Ensure cookie session is warm before the server route reads auth.
+      await supabase.auth.getSession();
       const res = await fetch("/api/college/portal", { credentials: "include" });
-      const json = (await res.json()) as PortalPayload & { error?: string };
+      const json = (await res.json()) as PortalPayload & {
+        error?: string;
+        status?: string;
+      };
       if (!res.ok) {
-        setError(json.error || "Could not load college portal");
+        if (res.status === 401) {
+          setError(
+            "Sign in with the same Google account used for college registration to open the portal.",
+          );
+        } else if (res.status === 403) {
+          setError(
+            json.status === "pending"
+              ? "Your college is still pending verification. You’ll get portal access once an admin verifies you."
+              : json.error || "This account is not allowed to open the college portal.",
+          );
+        } else if (res.status === 404) {
+          setError(
+            "No college registration found for this Google account. Register at College sign-in first.",
+          );
+        } else {
+          setError(json.error || "Could not load college portal");
+        }
         setData(null);
         return;
       }
@@ -112,8 +135,17 @@ export function CollegePortalView() {
   }, []);
 
   useEffect(() => {
+    if (!hasHydrated) return;
+    if (!isSignedIn) {
+      setLoading(false);
+      setError(
+        "Sign in with the same Google account used for college registration to open the portal.",
+      );
+      setData(null);
+      return;
+    }
     void load();
-  }, [load]);
+  }, [hasHydrated, isSignedIn, load]);
 
   const filtered = useMemo(() => {
     if (!data) return [];
@@ -194,9 +226,14 @@ export function CollegePortalView() {
       <div className={styles.root}>
         <div className={styles.wrap}>
           <p className={styles.error}>{error || "Portal unavailable"}</p>
-          <button type="button" className={styles.ghostBtn} onClick={() => void load()}>
-            Retry
-          </button>
+          <div className={styles.errorActions}>
+            <button type="button" className={styles.ghostBtn} onClick={() => void load()}>
+              Retry
+            </button>
+            <a className={styles.ghostBtn} href="/college/signin">
+              College sign-in
+            </a>
+          </div>
         </div>
       </div>
     );

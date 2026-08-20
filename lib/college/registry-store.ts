@@ -1,9 +1,6 @@
-import { randomUUID } from "crypto";
-import { promises as fs } from "fs";
-import path from "path";
-
 import { normalizeInstitutionName } from "@/lib/college/normalize-institution";
 import type { CollegeRegistrationDraft } from "@/lib/college/registration";
+import { createSupabaseServer } from "@/lib/supabase/server";
 
 export type CollegeApplicationStatus = "pending" | "approved" | "rejected";
 
@@ -46,62 +43,104 @@ export type CollegeRosterStudent = {
   syncedAt: string;
 };
 
-export type CollegeRegistry = {
-  applications: CollegeApplication[];
-  rosters: Record<string, CollegeRosterStudent[]>;
+export type CollegeApplicationAdminView = CollegeApplication & {
+  roster: CollegeRosterStudent[];
 };
 
-const EMPTY: CollegeRegistry = { applications: [], rosters: {} };
+type ApplicationRow = {
+  id: string;
+  user_id: string;
+  email: string | null;
+  status: string;
+  submitted_at: string;
+  verified_at: string | null;
+  institution_name: string;
+  institution_key: string;
+  state: string;
+  city: string;
+  xi_count: string;
+  xii_count: string;
+  math: boolean;
+  bio: boolean;
+  principal_name: string;
+  principal_mobile: string;
+  principal_email: string;
+  contact_name: string;
+  contact_mobile: string;
+  contact_email: string;
+  pledge: boolean;
+  xi_file_name: string | null;
+  xii_file_name: string | null;
+  xi_stored_rel_path: string | null;
+  xii_stored_rel_path: string | null;
+};
 
-/** Serialize registry writes in this process to reduce lost-update races. */
-let writeChain: Promise<void> = Promise.resolve();
+type RosterRow = {
+  student_user_id: string;
+  display_name: string;
+  student_code: string | null;
+  class_level: number | null;
+  campaign_level: number;
+  is_proctored_paid: boolean;
+  last_challenge_date: string | null;
+  synced_at: string;
+  institution_key: string;
+};
 
-function withRegistryLock<T>(fn: () => Promise<T>): Promise<T> {
-  const run = writeChain.then(fn, fn);
-  writeChain = run.then(
-    () => undefined,
-    () => undefined,
-  );
-  return run;
+function asStatus(value: string): CollegeApplicationStatus {
+  if (value === "approved" || value === "rejected" || value === "pending") return value;
+  return "pending";
 }
 
-function registryPath(): string {
-  return path.join(process.cwd(), "data", "college-registry.json");
+function rowToApplication(row: ApplicationRow): CollegeApplication {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    email: row.email,
+    status: asStatus(row.status),
+    submittedAt: row.submitted_at,
+    verifiedAt: row.verified_at,
+    institutionName: row.institution_name,
+    state: row.state ?? "",
+    city: row.city ?? "",
+    xiCount: row.xi_count ?? "",
+    xiiCount: row.xii_count ?? "",
+    math: !!row.math,
+    bio: !!row.bio,
+    principalName: row.principal_name ?? "",
+    principalMobile: row.principal_mobile ?? "",
+    principalEmail: row.principal_email ?? "",
+    contactName: row.contact_name ?? "",
+    contactMobile: row.contact_mobile ?? "",
+    contactEmail: row.contact_email ?? "",
+    pledge: !!row.pledge,
+    xiFileName: row.xi_file_name ?? null,
+    xiiFileName: row.xii_file_name ?? null,
+    xiStoredRelPath: row.xi_stored_rel_path ?? null,
+    xiiStoredRelPath: row.xii_stored_rel_path ?? null,
+  };
 }
 
-async function ensureStore(): Promise<void> {
-  const dir = path.dirname(registryPath());
-  await fs.mkdir(dir, { recursive: true });
-  try {
-    await fs.access(registryPath());
-  } catch {
-    await fs.writeFile(registryPath(), JSON.stringify(EMPTY, null, 2), "utf8");
-  }
-}
-
-export async function readCollegeRegistry(): Promise<CollegeRegistry> {
-  await ensureStore();
-  const raw = await fs.readFile(registryPath(), "utf8");
-  try {
-    const parsed = JSON.parse(raw) as Partial<CollegeRegistry>;
-    return {
-      applications: Array.isArray(parsed.applications) ? parsed.applications : [],
-      rosters:
-        parsed.rosters && typeof parsed.rosters === "object" ? parsed.rosters : {},
-    };
-  } catch {
-    return { ...EMPTY, applications: [], rosters: {} };
-  }
-}
-
-async function writeCollegeRegistry(registry: CollegeRegistry): Promise<void> {
-  await ensureStore();
-  await fs.writeFile(registryPath(), JSON.stringify(registry, null, 2), "utf8");
+function rowToRoster(row: RosterRow): CollegeRosterStudent {
+  const classLevel =
+    row.class_level === 11 || row.class_level === 12 ? row.class_level : null;
+  return {
+    userId: row.student_user_id,
+    displayName: row.display_name,
+    studentCode: row.student_code,
+    classLevel,
+    campaignLevel: typeof row.campaign_level === "number" ? row.campaign_level : 1,
+    isProctoredPaid: !!row.is_proctored_paid,
+    lastChallengeDate: row.last_challenge_date,
+    syncedAt: row.synced_at,
+  };
 }
 
 export function draftToApplicationFields(draft: CollegeRegistrationDraft) {
+  const institutionName = draft.institutionName.trim();
   return {
-    institutionName: draft.institutionName.trim(),
+    institutionName,
+    institutionKey: normalizeInstitutionName(institutionName),
     state: draft.state.trim(),
     city: draft.city.trim(),
     xiCount: draft.xiCount,
@@ -120,130 +159,185 @@ export function draftToApplicationFields(draft: CollegeRegistrationDraft) {
   };
 }
 
+function fieldsToInsert(
+  userId: string,
+  email: string | null,
+  fields: ReturnType<typeof draftToApplicationFields>,
+  extras: {
+    status: CollegeApplicationStatus;
+    submittedAt: string;
+    verifiedAt: string | null;
+    xiStoredRelPath: string | null;
+    xiiStoredRelPath: string | null;
+  },
+) {
+  return {
+    user_id: userId,
+    email,
+    status: extras.status,
+    submitted_at: extras.submittedAt,
+    verified_at: extras.verifiedAt,
+    institution_name: fields.institutionName,
+    institution_key: fields.institutionKey,
+    state: fields.state,
+    city: fields.city,
+    xi_count: fields.xiCount,
+    xii_count: fields.xiiCount,
+    math: fields.math,
+    bio: fields.bio,
+    principal_name: fields.principalName,
+    principal_mobile: fields.principalMobile,
+    principal_email: fields.principalEmail,
+    contact_name: fields.contactName,
+    contact_mobile: fields.contactMobile,
+    contact_email: fields.contactEmail,
+    pledge: fields.pledge,
+    xi_file_name: fields.xiFileName,
+    xii_file_name: fields.xiiFileName,
+    xi_stored_rel_path: extras.xiStoredRelPath,
+    xii_stored_rel_path: extras.xiiStoredRelPath,
+  };
+}
+
 export async function upsertCollegeApplication(input: {
   userId: string;
   email: string | null;
   draft: CollegeRegistrationDraft;
 }): Promise<CollegeApplication> {
-  return withRegistryLock(async () => {
-    const registry = await readCollegeRegistry();
-    const fields = draftToApplicationFields(input.draft);
-    const existing = registry.applications.find((a) => a.userId === input.userId);
+  const supabase = await createSupabaseServer();
+  const fields = draftToApplicationFields(input.draft);
+  const existing = await getCollegeApplicationForUser(input.userId);
 
-    if (existing) {
-      // Never downgrade an approved college from a re-submit.
-      if (existing.status === "approved") {
-        const merged: CollegeApplication = {
-          ...existing,
-          ...fields,
-          email: input.email,
-          status: "approved",
-          verifiedAt: existing.verifiedAt,
-          xiStoredRelPath: existing.xiStoredRelPath ?? null,
-          xiiStoredRelPath: existing.xiiStoredRelPath ?? null,
-          xiFileName: fields.xiFileName ?? existing.xiFileName ?? null,
-          xiiFileName: fields.xiiFileName ?? existing.xiiFileName ?? null,
-        };
-        registry.applications = registry.applications.map((a) =>
-          a.id === existing.id ? merged : a,
-        );
-        await writeCollegeRegistry(registry);
-        return merged;
-      }
+  if (existing) {
+    const keepApproved = existing.status === "approved";
+    const payload = fieldsToInsert(input.userId, input.email, fields, {
+      status: keepApproved ? "approved" : "pending",
+      submittedAt: keepApproved ? existing.submittedAt : new Date().toISOString(),
+      verifiedAt: keepApproved ? existing.verifiedAt : null,
+      xiStoredRelPath: existing.xiStoredRelPath,
+      xiiStoredRelPath: existing.xiiStoredRelPath,
+    });
+    payload.xi_file_name = fields.xiFileName ?? existing.xiFileName;
+    payload.xii_file_name = fields.xiiFileName ?? existing.xiiFileName;
 
-      const merged: CollegeApplication = {
-        ...existing,
-        ...fields,
-        email: input.email,
-        status: "pending",
-        verifiedAt: null,
-        submittedAt: new Date().toISOString(),
-        xiStoredRelPath: existing.xiStoredRelPath ?? null,
-        xiiStoredRelPath: existing.xiiStoredRelPath ?? null,
-        xiFileName: fields.xiFileName ?? existing.xiFileName ?? null,
-        xiiFileName: fields.xiiFileName ?? existing.xiiFileName ?? null,
-      };
-      registry.applications = registry.applications.map((a) =>
-        a.id === existing.id ? merged : a,
-      );
-      await writeCollegeRegistry(registry);
-      return merged;
+    const { data, error } = await supabase
+      .from("edudeca_college_applications")
+      .update(payload)
+      .eq("id", existing.id)
+      .select("*")
+      .single();
+    if (error || !data) {
+      console.error("[college] upsert update", error);
+      throw error ?? new Error("Could not update college application");
     }
+    return rowToApplication(data as ApplicationRow);
+  }
 
-    const created: CollegeApplication = {
-      id: randomUUID(),
-      userId: input.userId,
-      email: input.email,
-      status: "pending",
-      submittedAt: new Date().toISOString(),
-      verifiedAt: null,
-      xiStoredRelPath: null,
-      xiiStoredRelPath: null,
-      ...fields,
-    };
-    registry.applications.push(created);
-    await writeCollegeRegistry(registry);
-    return created;
+  const insertPayload = fieldsToInsert(input.userId, input.email, fields, {
+    status: "pending",
+    submittedAt: new Date().toISOString(),
+    verifiedAt: null,
+    xiStoredRelPath: null,
+    xiiStoredRelPath: null,
   });
+
+  const { data, error } = await supabase
+    .from("edudeca_college_applications")
+    .insert(insertPayload)
+    .select("*")
+    .single();
+  if (error || !data) {
+    console.error("[college] upsert insert", error);
+    throw error ?? new Error("Could not create college application");
+  }
+  return rowToApplication(data as ApplicationRow);
 }
 
 export async function listPendingCollegeApplications(): Promise<CollegeApplication[]> {
-  const registry = await readCollegeRegistry();
-  return registry.applications
-    .filter((a) => a.status === "pending")
-    .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt));
+  const supabase = await createSupabaseServer();
+  const { data, error } = await supabase
+    .from("edudeca_college_applications")
+    .select("*")
+    .eq("status", "pending")
+    .order("submitted_at", { ascending: false });
+  if (error) {
+    console.error("[college] list pending", error);
+    return [];
+  }
+  return (data as ApplicationRow[] | null)?.map(rowToApplication) ?? [];
 }
-
-export type CollegeApplicationAdminView = CollegeApplication & {
-  roster: CollegeRosterStudent[];
-};
 
 export async function listAllCollegeApplicationsForAdmin(): Promise<
   CollegeApplicationAdminView[]
 > {
-  const registry = await readCollegeRegistry();
-  const apps = [...registry.applications].sort((a, b) =>
-    b.submittedAt.localeCompare(a.submittedAt),
-  );
-  return apps.map((app) => {
-    const key = normalizeInstitutionName(app.institutionName);
-    const roster = key ? registry.rosters[key] ?? [] : [];
-    return {
-      ...app,
-      xiFileName: app.xiFileName ?? null,
-      xiiFileName: app.xiiFileName ?? null,
-      xiStoredRelPath: app.xiStoredRelPath ?? null,
-      xiiStoredRelPath: app.xiiStoredRelPath ?? null,
-      roster: [...roster].sort((a, b) => a.displayName.localeCompare(b.displayName)),
-    };
+  const supabase = await createSupabaseServer();
+  const [{ data: apps, error: appsError }, { data: roster, error: rosterError }] =
+    await Promise.all([
+      supabase
+        .from("edudeca_college_applications")
+        .select("*")
+        .order("submitted_at", { ascending: false }),
+      supabase.from("edudeca_college_roster").select("*"),
+    ]);
+
+  if (appsError) {
+    console.error("[college] list admin apps", appsError);
+    return [];
+  }
+  if (rosterError) {
+    console.error("[college] list admin roster", rosterError);
+  }
+
+  const byKey = new Map<string, CollegeRosterStudent[]>();
+  for (const row of (roster as RosterRow[] | null) ?? []) {
+    const list = byKey.get(row.institution_key) ?? [];
+    list.push(rowToRoster(row));
+    byKey.set(row.institution_key, list);
+  }
+
+  return ((apps as ApplicationRow[] | null) ?? []).map((app) => {
+    const mapped = rowToApplication(app);
+    const students = [...(byKey.get(app.institution_key) ?? [])].sort((a, b) =>
+      a.displayName.localeCompare(b.displayName),
+    );
+    return { ...mapped, roster: students };
   });
 }
 
 export async function verifyCollegeApplication(
   applicationId: string,
 ): Promise<CollegeApplication | null> {
-  return withRegistryLock(async () => {
-    const registry = await readCollegeRegistry();
-    const idx = registry.applications.findIndex((a) => a.id === applicationId);
-    if (idx < 0) return null;
-    const current = registry.applications[idx];
-    if (!current) return null;
-    const next: CollegeApplication = {
-      ...current,
+  const supabase = await createSupabaseServer();
+  const { data, error } = await supabase
+    .from("edudeca_college_applications")
+    .update({
       status: "approved",
-      verifiedAt: new Date().toISOString(),
-    };
-    registry.applications[idx] = next;
-    await writeCollegeRegistry(registry);
-    return next;
-  });
+      verified_at: new Date().toISOString(),
+    })
+    .eq("id", applicationId)
+    .select("*")
+    .maybeSingle();
+  if (error) {
+    console.error("[college] verify", error);
+    return null;
+  }
+  return data ? rowToApplication(data as ApplicationRow) : null;
 }
 
 export async function getCollegeApplicationById(
   applicationId: string,
 ): Promise<CollegeApplication | null> {
-  const registry = await readCollegeRegistry();
-  return registry.applications.find((a) => a.id === applicationId) ?? null;
+  const supabase = await createSupabaseServer();
+  const { data, error } = await supabase
+    .from("edudeca_college_applications")
+    .select("*")
+    .eq("id", applicationId)
+    .maybeSingle();
+  if (error) {
+    console.error("[college] get by id", error);
+    return null;
+  }
+  return data ? rowToApplication(data as ApplicationRow) : null;
 }
 
 export async function attachCollegeUploadPaths(input: {
@@ -251,31 +345,47 @@ export async function attachCollegeUploadPaths(input: {
   xi?: { fileName: string; storedRelPath: string } | null;
   xii?: { fileName: string; storedRelPath: string } | null;
 }): Promise<CollegeApplication | null> {
-  return withRegistryLock(async () => {
-    const registry = await readCollegeRegistry();
-    const idx = registry.applications.findIndex((a) => a.id === input.applicationId);
-    if (idx < 0) return null;
-    const current = registry.applications[idx];
-    if (!current) return null;
+  const supabase = await createSupabaseServer();
+  const patch: Record<string, string> = {};
+  if (input.xi) {
+    patch.xi_file_name = input.xi.fileName;
+    patch.xi_stored_rel_path = input.xi.storedRelPath;
+  }
+  if (input.xii) {
+    patch.xii_file_name = input.xii.fileName;
+    patch.xii_stored_rel_path = input.xii.storedRelPath;
+  }
+  if (Object.keys(patch).length === 0) {
+    return getCollegeApplicationById(input.applicationId);
+  }
 
-    const next: CollegeApplication = {
-      ...current,
-      xiFileName: input.xi?.fileName ?? current.xiFileName ?? null,
-      xiiFileName: input.xii?.fileName ?? current.xiiFileName ?? null,
-      xiStoredRelPath: input.xi?.storedRelPath ?? current.xiStoredRelPath ?? null,
-      xiiStoredRelPath: input.xii?.storedRelPath ?? current.xiiStoredRelPath ?? null,
-    };
-    registry.applications[idx] = next;
-    await writeCollegeRegistry(registry);
-    return next;
-  });
+  const { data, error } = await supabase
+    .from("edudeca_college_applications")
+    .update(patch)
+    .eq("id", input.applicationId)
+    .select("*")
+    .maybeSingle();
+  if (error) {
+    console.error("[college] attach uploads", error);
+    return null;
+  }
+  return data ? rowToApplication(data as ApplicationRow) : null;
 }
 
 export async function getCollegeApplicationForUser(
   userId: string,
 ): Promise<CollegeApplication | null> {
-  const registry = await readCollegeRegistry();
-  return registry.applications.find((a) => a.userId === userId) ?? null;
+  const supabase = await createSupabaseServer();
+  const { data, error } = await supabase
+    .from("edudeca_college_applications")
+    .select("*")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) {
+    console.error("[college] get for user", error);
+    return null;
+  }
+  return data ? rowToApplication(data as ApplicationRow) : null;
 }
 
 export async function getApprovedCollegeForUser(
@@ -299,35 +409,27 @@ export async function syncStudentOntoMatchingCollegeRoster(input: {
   const key = normalizeInstitutionName(input.institutionName);
   if (!key) return { matched: false, institutionKey: null };
 
-  return withRegistryLock(async () => {
-    const registry = await readCollegeRegistry();
-    const approved = registry.applications.find(
-      (a) =>
-        a.status === "approved" &&
-        normalizeInstitutionName(a.institutionName) === key,
-    );
-    if (!approved) return { matched: false, institutionKey: null };
-
-    const classLevel =
-      input.classLevel === 11 || input.classLevel === 12 ? input.classLevel : null;
-
-    const entry: CollegeRosterStudent = {
-      userId: input.userId,
-      displayName: input.displayName.trim() || "Student",
-      studentCode: input.studentCode,
-      classLevel,
-      campaignLevel: input.campaignLevel,
-      isProctoredPaid: input.isProctoredPaid,
-      lastChallengeDate: input.lastChallengeDate,
-      syncedAt: new Date().toISOString(),
-    };
-
-    const list = registry.rosters[key] ?? [];
-    const without = list.filter((s) => s.userId !== input.userId);
-    registry.rosters[key] = [...without, entry];
-    await writeCollegeRegistry(registry);
-    return { matched: true, institutionKey: key };
+  const supabase = await createSupabaseServer();
+  const { data, error } = await supabase.rpc("edudeca_sync_student_college_roster", {
+    p_institution_key: key,
+    p_display_name: input.displayName,
+    p_student_code: input.studentCode,
+    p_class_level: input.classLevel ?? null,
+    p_campaign_level: input.campaignLevel,
+    p_is_proctored_paid: input.isProctoredPaid,
+    p_last_challenge_date: input.lastChallengeDate,
   });
+
+  if (error) {
+    console.error("[college] roster sync rpc", error);
+    return { matched: false, institutionKey: null };
+  }
+
+  const json = data as { matched?: boolean; institution_key?: string | null } | null;
+  return {
+    matched: !!json?.matched,
+    institutionKey: json?.institution_key ?? null,
+  };
 }
 
 export async function getRosterForInstitution(
@@ -335,6 +437,15 @@ export async function getRosterForInstitution(
 ): Promise<CollegeRosterStudent[]> {
   const key = normalizeInstitutionName(institutionName);
   if (!key) return [];
-  const registry = await readCollegeRegistry();
-  return registry.rosters[key] ?? [];
+  const supabase = await createSupabaseServer();
+  const { data, error } = await supabase
+    .from("edudeca_college_roster")
+    .select("*")
+    .eq("institution_key", key)
+    .order("display_name", { ascending: true });
+  if (error) {
+    console.error("[college] get roster", error);
+    return [];
+  }
+  return ((data as RosterRow[] | null) ?? []).map(rowToRoster);
 }

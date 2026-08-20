@@ -123,11 +123,20 @@ export async function POST(request: Request) {
     draft.xiiFileName = xiiFile.name;
   }
 
-  let application = await upsertCollegeApplication({
-    userId: user.id,
-    email: user.email ?? null,
-    draft,
-  });
+  let application;
+  try {
+    application = await upsertCollegeApplication({
+      userId: user.id,
+      email: user.email ?? null,
+      draft,
+    });
+  } catch (err) {
+    console.error("[college] upsert failed", err);
+    return NextResponse.json(
+      { error: "Could not save college application" },
+      { status: 500 },
+    );
+  }
 
   try {
     const xiSaved = xiFile

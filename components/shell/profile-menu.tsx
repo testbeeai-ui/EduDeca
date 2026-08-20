@@ -54,7 +54,7 @@ export function ProfileMenu() {
     setOpen(false);
     signOut();
     await supabase.auth.signOut({ scope: "local" });
-    router.replace("/signin");
+    router.replace("/home");
   };
 
   return (

@@ -31,8 +31,7 @@ yarn-error.log*
 # env files
 .env*
 
-# local college file registry / uploads (runtime data)
-/data/college-registry.json
+# local college uploads only (applications/roster live in Supabase)
 /data/college-uploads/
 
 # typescript
