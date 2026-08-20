@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 
 import { EduDecaLogo } from "@/components/shell/edudeca-logo";
 import { ProfileMenu } from "@/components/shell/profile-menu";
+import { ReturningUserLogin } from "@/components/shell/returning-user-login";
 import { appNavItems } from "@/lib/navigation";
 import { springSnappy } from "@/lib/motion";
 import { cn } from "@/lib/utils";
@@ -69,7 +70,7 @@ export function SidebarNav() {
         })}
       </nav>
 
-      {isSignedIn && <ProfileMenu />}
+      {isSignedIn ? <ProfileMenu /> : <ReturningUserLogin />}
     </aside>
   );
 }

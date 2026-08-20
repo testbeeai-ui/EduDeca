@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, Trophy } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { BadgePill } from "@/components/common/badge-pill";
@@ -40,6 +41,8 @@ export function WalkthroughStepCard({
   onStepClick,
   onSkipToSignIn,
 }: WalkthroughStepCardProps) {
+  const searchParams = useSearchParams();
+  const isNewAccountNotice = searchParams.get("auth_notice") === "new_account";
   const step = steps[currentStep - 1];
   const isLastStep = currentStep === WALKTHROUGH_SIGN_IN_STEP;
   const isDisciplinesStep = currentStep === WALKTHROUGH_DISCIPLINES_STEP;
@@ -106,6 +109,19 @@ export function WalkthroughStepCard({
       </div>
 
       <ReferralInviteBanner />
+
+      {isNewAccountNotice ? (
+        <div
+          role="status"
+          className="rounded-2xl border border-amber-500/35 bg-amber-500/10 px-4 py-3 text-sm leading-relaxed text-amber-100/95"
+        >
+          <p className="font-semibold text-amber-50">Complete Sign-in carefully</p>
+          <p className="mt-1 text-amber-100/80">
+            This Google account is new to EduDeca. Work through each step — disciplines,
+            class, college, and location — so your profile is set correctly the first time.
+          </p>
+        </div>
+      ) : null}
 
       {gateHint ? (
         <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-center text-xs font-medium text-amber-200">

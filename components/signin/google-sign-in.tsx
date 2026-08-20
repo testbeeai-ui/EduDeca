@@ -8,17 +8,18 @@ import { LocationSelect } from "@/components/signin/location-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { WALKTHROUGH_DISCIPLINES_STEP } from "@/data/walkthrough";
-import { isLineupComplete } from "@/lib/disciplines/selection";
+import { isLineupComplete, lineupIds } from "@/lib/disciplines/selection";
+import { patchDisciplines } from "@/lib/progress/client";
 import { getCitiesForState, INDIAN_STATES_AND_UTS } from "@/lib/signin/india-geo";
+import { AUTH_NEXT_COOKIE } from "@/lib/signin/returning-login";
 import {
   isSignupProfileReady,
   type SignupClassLevel,
 } from "@/lib/signin/signup-profile";
+import { syncSignupProfileFromLocal } from "@/lib/signin/sync-signup-profile";
 import { supabase } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
-
-const AUTH_NEXT_COOKIE = "edudeca_auth_next";
 
 interface GoogleSignInFormProps {
   title: string;
@@ -70,6 +71,7 @@ export function GoogleSignInForm({ title, description }: GoogleSignInFormProps) 
     }
     return null;
   });
+  const isSignedIn = useAppStore((s) => s.isSignedIn);
 
   const cities = getCitiesForState(signupState);
   const profileReady = isSignupProfileReady({
@@ -116,6 +118,18 @@ export function GoogleSignInForm({ title, description }: GoogleSignInFormProps) 
       if (origin.includes("127.0.0.1") || /^https?:\/\/\d+\.\d+\.\d+\.\d+/.test(origin)) {
         setError("Open EduDeca at http://localhost:3001 before signing in.");
         setSigningIn(false);
+        return;
+      }
+
+      // Already signed in (e.g. returned from “Log in with Google” as a new account)
+      // — save walkthrough answers and go home without another OAuth round-trip.
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (sessionData.session?.user) {
+        await syncSignupProfileFromLocal();
+        const ids = lineupIds(disciplineLineup);
+        const synced = await patchDisciplines(ids);
+        if (synced) useAppStore.getState().hydrateProgress(synced);
+        window.location.href = "/home";
         return;
       }
 
@@ -255,7 +269,13 @@ export function GoogleSignInForm({ title, description }: GoogleSignInFormProps) 
         disabled={!canStartGoogle}
       >
         <GoogleMark className="size-5 shrink-0" />
-        {signingIn ? "Connecting to Google…" : "Continue with Google"}
+        {signingIn
+          ? isSignedIn
+            ? "Saving your profile…"
+            : "Connecting to Google…"
+          : isSignedIn
+            ? "Save profile & continue"
+            : "Continue with Google"}
       </Button>
 
       {!profileReady && !signingIn ? (
@@ -279,6 +299,7 @@ export function GoogleSignInForm({ title, description }: GoogleSignInFormProps) 
         <Link href="/college/signin" className="font-medium text-primary underline-offset-2 hover:underline">
           College / institution registration
         </Link>
+        . Use a different Google account than your student login.
       </p>
     </div>
   );

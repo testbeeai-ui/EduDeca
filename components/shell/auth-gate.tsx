@@ -4,14 +4,11 @@ import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 
-import {
-  isLineupComplete,
-  lineupIds,
-  lineupIdsMatch,
-} from "@/lib/disciplines/selection";
+import { isLineupComplete, lineupIds, lineupIdsMatch } from "@/lib/disciplines/selection";
 import { isTesterInvestorEmail } from "@/lib/admin/tester-allowlist";
 import { fetchServerProgress, patchDisciplines } from "@/lib/progress/client";
 import { EDUDECA_PENDING_REFERRER_KEY } from "@/lib/referral/referral-code";
+import { isEduDecaStudentEstablished } from "@/lib/signin/returning-login";
 import { syncSignupProfileFromLocal } from "@/lib/signin/sync-signup-profile";
 import { supabase } from "@/lib/supabase/client";
 import { useAppStore } from "@/store/useAppStore";
@@ -234,7 +231,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       const isTester = isTesterInvestorEmail(email);
 
       if (collegeStatus === "approved") {
-        if (isTester && pathname === "/profile") return;
+        if (isTester && (pathname === "/profile" || pathname.startsWith("/admin"))) return;
         if (pathname === COLLEGE_SIGNIN_PATH || pathname === COLLEGE_PENDING_PATH) {
           router.replace(COLLEGE_PORTAL_PATH);
           return;
@@ -247,21 +244,42 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       }
 
       if (collegeStatus === "pending" || collegeStatus === "rejected") {
-        // Pending colleges wait on /college/pending or /college/signin —
-        // do not lock them out of the student app.
-        if (pathname === COLLEGE_PORTAL_PATH) {
-          router.replace(COLLEGE_PENDING_PATH);
-        }
+        // One Google email = one role. College applications stay on college
+        // pending — never the student app — until approved (or rejected).
+        if (isTester && (pathname === "/profile" || pathname.startsWith("/admin"))) return;
+        if (pathname === COLLEGE_PENDING_PATH) return;
+        router.replace(COLLEGE_PENDING_PATH);
         return;
       }
 
-      // No college application — normal student routing.
-      if (pathname === COLLEGE_PORTAL_PATH || pathname === COLLEGE_PENDING_PATH) {
+      // No college application — gate /admin to allowlisted admins only.
+      if (pathname.startsWith("/admin") && !isTester) {
+        router.replace("/home");
+        return;
+      }
+
+      // No college application yet — do NOT bounce /college/pending back to
+      // sign-in (race: OAuth lands here before POST finishes). Pending page
+      // submits the draft and shows the thank-you state itself.
+      if (pathname === COLLEGE_PORTAL_PATH) {
         router.replace(COLLEGE_SIGNIN_PATH);
         return;
       }
       if (pathname === "/signin") {
-        router.replace("/home");
+        const store = useAppStore.getState();
+        const disciplines = isLineupComplete(store.disciplineLineup)
+          ? lineupIds(store.disciplineLineup)
+          : [];
+        const established = isEduDecaStudentEstablished({
+          classLevel: store.signupClassLevel,
+          institutionName: store.signupCollege,
+          disciplines,
+          xp: store.xp,
+          campaignLevel: store.campaignLevel,
+        });
+        if (established) {
+          router.replace("/home");
+        }
       }
     })();
 
@@ -282,7 +300,20 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   }
 
   if (!isSignedIn && PROTECTED_ACTIVITY_PATHS.has(pathname)) return null;
-  if (isSignedIn && pathname === "/signin") return null;
+  if (isSignedIn && pathname === "/signin") {
+    const store = useAppStore.getState();
+    const disciplines = isLineupComplete(store.disciplineLineup)
+      ? lineupIds(store.disciplineLineup)
+      : [];
+    const established = isEduDecaStudentEstablished({
+      classLevel: store.signupClassLevel,
+      institutionName: store.signupCollege,
+      disciplines,
+      xp: store.xp,
+      campaignLevel: store.campaignLevel,
+    });
+    if (established) return null;
+  }
 
   return <>{children}</>;
 }
