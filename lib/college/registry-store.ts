@@ -1,3 +1,5 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+
 import { normalizeInstitutionName } from "@/lib/college/normalize-institution";
 import type { CollegeRegistrationDraft } from "@/lib/college/registration";
 import { createSupabaseServer } from "@/lib/supabase/server";
@@ -210,8 +212,21 @@ export async function upsertCollegeApplication(input: {
 
   if (existing) {
     const keepApproved = existing.status === "approved";
-    const payload = fieldsToInsert(input.userId, input.email, fields, {
-      status: keepApproved ? "approved" : "pending",
+    // Approved identity is frozen for non-admins (roster matching key).
+    const lockedFields = keepApproved
+      ? {
+          ...fields,
+          institutionName: existing.institutionName,
+          institutionKey: normalizeInstitutionName(existing.institutionName),
+        }
+      : fields;
+    const nextStatus: CollegeApplicationStatus = keepApproved
+      ? "approved"
+      : existing.status === "rejected"
+        ? "pending"
+        : "pending";
+    const payload = fieldsToInsert(input.userId, input.email, lockedFields, {
+      status: nextStatus,
       submittedAt: keepApproved ? existing.submittedAt : new Date().toISOString(),
       verifiedAt: keepApproved ? existing.verifiedAt : null,
       xiStoredRelPath: existing.xiStoredRelPath,
@@ -374,8 +389,9 @@ export async function attachCollegeUploadPaths(input: {
 
 export async function getCollegeApplicationForUser(
   userId: string,
+  client?: SupabaseClient,
 ): Promise<CollegeApplication | null> {
-  const supabase = await createSupabaseServer();
+  const supabase = client ?? (await createSupabaseServer());
   const { data, error } = await supabase
     .from("edudeca_college_applications")
     .select("*")

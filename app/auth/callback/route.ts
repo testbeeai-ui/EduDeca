@@ -1,4 +1,4 @@
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
 
 import { getCollegeApplicationForUser } from "@/lib/college/registry-store";
@@ -8,6 +8,8 @@ import {
   LOGIN_MODE_COOKIE,
   LOGIN_MODE_RETURNING,
 } from "@/lib/signin/returning-login";
+
+type PendingCookie = { name: string; value: string; options?: CookieOptions };
 
 /**
  * Exchange Google OAuth PKCE code and set session cookies.
@@ -32,10 +34,29 @@ export async function GET(request: NextRequest) {
   }
   let safeNext = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/home";
 
+  let pendingCookies: PendingCookie[] = [];
+
+  const applySessionCookies = (response: NextResponse) => {
+    for (const { name, value, options } of pendingCookies) {
+      response.cookies.set(name, value, {
+        ...options,
+        path: options?.path ?? "/",
+        sameSite: options?.sameSite ?? "lax",
+      });
+    }
+    return response;
+  };
+
   const clearAuthCookies = (response: NextResponse) => {
     response.cookies.set(AUTH_NEXT_COOKIE, "", { path: "/", maxAge: 0 });
     response.cookies.set(LOGIN_MODE_COOKIE, "", { path: "/", maxAge: 0 });
     return response;
+  };
+
+  const redirectWithSession = (target: URL) => {
+    const response = NextResponse.redirect(target);
+    applySessionCookies(response);
+    return clearAuthCookies(response);
   };
 
   if (!code || code.length < 16) {
@@ -60,14 +81,9 @@ export async function GET(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          pendingCookies = cookiesToSet;
           response = NextResponse.redirect(finish);
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, {
-              ...options,
-              path: options?.path ?? "/",
-              sameSite: options?.sameSite ?? "lax",
-            }),
-          );
+          applySessionCookies(response);
         },
       },
     },
@@ -89,14 +105,14 @@ export async function GET(request: NextRequest) {
     const failPath = safeNext.startsWith("/college/") ? "/college/signin" : "/signin";
     const fail = new URL(failPath, url.origin);
     fail.searchParams.set("auth_error", "oauth_exchange_failed");
-    response = NextResponse.redirect(fail);
-    return clearAuthCookies(response);
+    return clearAuthCookies(applySessionCookies(NextResponse.redirect(fail)));
   }
 
   const userId = exchanged.session?.user?.id;
   if (userId) {
     try {
-      const app = await getCollegeApplicationForUser(userId);
+      // Use the exchange client (session cookies just set) — not a fresh createSupabaseServer().
+      const app = await getCollegeApplicationForUser(userId, supabase);
       if (app?.status === "approved") {
         safeNext = "/college/portal";
       } else if (app?.status === "pending" || app?.status === "rejected") {
@@ -131,12 +147,10 @@ export async function GET(request: NextRequest) {
         });
 
         if (!established) {
-          safeNext = "/signin";
-          finish = new URL(safeNext, url.origin);
+          finish = new URL("/signin", url.origin);
           finish.searchParams.set("auth_notice", "new_account");
           finish.hash = "";
-          response = NextResponse.redirect(finish);
-          return clearAuthCookies(response);
+          return redirectWithSession(finish);
         }
       }
 
@@ -144,7 +158,7 @@ export async function GET(request: NextRequest) {
         finish = new URL(safeNext, url.origin);
         finish.search = "";
         finish.hash = "";
-        response = NextResponse.redirect(finish);
+        return redirectWithSession(finish);
       }
     } catch {
       /* registry / profile read is best-effort */
