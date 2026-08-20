@@ -9,6 +9,7 @@ import {
   lineupIds,
   lineupIdsMatch,
 } from "@/lib/disciplines/selection";
+import { isTesterInvestorEmail } from "@/lib/admin/tester-allowlist";
 import { fetchServerProgress, patchDisciplines } from "@/lib/progress/client";
 import { EDUDECA_PENDING_REFERRER_KEY } from "@/lib/referral/referral-code";
 import { syncSignupProfileFromLocal } from "@/lib/signin/sync-signup-profile";
@@ -16,7 +17,49 @@ import { supabase } from "@/lib/supabase/client";
 import { useAppStore } from "@/store/useAppStore";
 
 const PROTECTED_ACTIVITY_PATHS = new Set(["/challenge"]);
+const COLLEGE_SIGNIN_PATH = "/college/signin";
+const COLLEGE_PENDING_PATH = "/college/pending";
+const COLLEGE_PORTAL_PATH = "/college/portal";
+const STUDENT_APP_PATHS = new Set([
+  "/home",
+  "/levels",
+  "/leaderboard",
+  "/rewards",
+  "/profile",
+  "/challenge",
+  "/signin",
+]);
 const GET_SESSION_TIMEOUT_MS = 4000;
+
+type CollegeGateStatus = "none" | "pending" | "approved" | "rejected";
+
+async function fetchCollegeGateStatus(): Promise<CollegeGateStatus> {
+  try {
+    const res = await fetch("/api/college/applications", { credentials: "include" });
+    if (!res.ok) return "none";
+    const json = (await res.json()) as {
+      application?: { status?: string } | null;
+    };
+    const status = json.application?.status;
+    if (status === "pending" || status === "approved" || status === "rejected") {
+      return status;
+    }
+    return "none";
+  } catch {
+    return "none";
+  }
+}
+
+async function syncCollegeRosterBestEffort() {
+  try {
+    await fetch("/api/college/roster/sync", {
+      method: "POST",
+      credentials: "include",
+    });
+  } catch {
+    /* best-effort */
+  }
+}
 
 function displayNameFromUser(user: User): string {
   const meta = user.user_metadata ?? {};
@@ -136,6 +179,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
         if (data.session?.user) {
           await syncProgressFromServer();
           await syncSignupProfileFromLocal();
+          await syncCollegeRosterBestEffort();
         }
         finish();
       })
@@ -156,6 +200,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
         void (async () => {
           await syncProgressFromServer();
           await syncSignupProfileFromLocal();
+          await syncCollegeRosterBestEffort();
         })();
       }
       finish();
@@ -176,9 +221,53 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (isSignedIn && pathname === "/signin") {
-      router.replace("/home");
-    }
+    if (!isSignedIn) return;
+
+    let cancelled = false;
+    const email = useAppStore.getState().email;
+
+    void (async () => {
+      const collegeStatus = await fetchCollegeGateStatus();
+      if (cancelled) return;
+
+      // Testers keep Profile access so they can verify colleges.
+      const isTester = isTesterInvestorEmail(email);
+
+      if (collegeStatus === "approved") {
+        if (isTester && pathname === "/profile") return;
+        if (pathname === COLLEGE_SIGNIN_PATH || pathname === COLLEGE_PENDING_PATH) {
+          router.replace(COLLEGE_PORTAL_PATH);
+          return;
+        }
+        if (STUDENT_APP_PATHS.has(pathname)) {
+          router.replace(COLLEGE_PORTAL_PATH);
+          return;
+        }
+        return;
+      }
+
+      if (collegeStatus === "pending" || collegeStatus === "rejected") {
+        // Pending colleges wait on /college/pending or /college/signin —
+        // do not lock them out of the student app.
+        if (pathname === COLLEGE_PORTAL_PATH) {
+          router.replace(COLLEGE_PENDING_PATH);
+        }
+        return;
+      }
+
+      // No college application — normal student routing.
+      if (pathname === COLLEGE_PORTAL_PATH || pathname === COLLEGE_PENDING_PATH) {
+        router.replace(COLLEGE_SIGNIN_PATH);
+        return;
+      }
+      if (pathname === "/signin") {
+        router.replace("/home");
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [hasHydrated, isSignedIn, pathname, router]);
 
   if (!hasHydrated) {

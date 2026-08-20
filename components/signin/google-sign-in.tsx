@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
@@ -271,6 +272,13 @@ export function GoogleSignInForm({ title, description }: GoogleSignInFormProps) 
 
       <p className="text-center text-xs text-muted-foreground">
         We use Google only to create your EduDeca account — no passwords to remember.
+      </p>
+
+      <p className="text-center text-xs text-muted-foreground">
+        Registering your institution?{" "}
+        <Link href="/college/signin" className="font-medium text-primary underline-offset-2 hover:underline">
+          College / institution registration
+        </Link>
       </p>
     </div>
   );

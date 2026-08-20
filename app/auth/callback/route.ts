@@ -72,7 +72,8 @@ export async function GET(request: NextRequest) {
       hasVerifier,
       cookieNames: cookieNames.filter((n) => n.startsWith("sb-")),
     });
-    const fail = new URL("/signin", url.origin);
+    const failPath = safeNext.startsWith("/college/") ? "/college/signin" : "/signin";
+    const fail = new URL(failPath, url.origin);
     fail.searchParams.set("auth_error", "oauth_exchange_failed");
     response = NextResponse.redirect(fail);
   }

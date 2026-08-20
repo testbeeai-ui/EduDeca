@@ -1,0 +1,509 @@
+.root {
+  --cr-bg: #070b0d;
+  --cr-panel: #0f151a;
+  --cr-panel2: #151d23;
+  --cr-panel3: #1a232a;
+  --cr-border: #232d33;
+  --cr-text: #f1f6f4;
+  --cr-muted: #8fa0a0;
+  --cr-muted-dim: #5c6c6c;
+  --cr-teal: #22d3a6;
+  --cr-blue: #4fa3e8;
+  --cr-purple: #9a8cf2;
+  --cr-amber: #f2b441;
+  --cr-red: #f0654f;
+
+  min-height: 100dvh;
+  background: var(--cr-bg);
+  color: var(--cr-text);
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 32px;
+  border-bottom: 1px solid var(--cr-border);
+  background: var(--cr-panel);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+@media (max-width: 640px) {
+  .topbar {
+    padding: 14px 16px;
+  }
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mark {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: linear-gradient(150deg, var(--cr-teal), #0f8f6f);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  color: #04140f;
+  font-size: 14px;
+}
+
+.wordmark {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.wordmark span {
+  color: var(--cr-muted-dim);
+  font-weight: 600;
+}
+
+.topbarRight {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.signedIn {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12.5px;
+  color: var(--cr-muted);
+}
+
+@media (max-width: 640px) {
+  .signedIn {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.av {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: linear-gradient(150deg, var(--cr-purple), #6b5fc9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.logoutBtn {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--cr-red);
+  background: rgba(240, 101, 79, 0.1);
+  border: 1px solid rgba(240, 101, 79, 0.35);
+  padding: 7px 13px;
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+.wrap {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 28px 32px 60px;
+}
+
+@media (max-width: 640px) {
+  .wrap {
+    padding: 20px 16px 48px;
+  }
+}
+
+.collegeCard {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(120deg, rgba(34, 211, 166, 0.08), var(--cr-panel) 60%);
+  border: 1px solid var(--cr-border);
+  border-radius: 18px;
+  padding: 22px 24px;
+  margin-bottom: 22px;
+}
+
+.collegeId {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.collegeLogo {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: var(--cr-panel3);
+  border: 1px solid var(--cr-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+}
+
+.collegeName {
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.collegeMeta {
+  font-size: 12.5px;
+  color: var(--cr-muted);
+  margin-top: 4px;
+}
+
+.collegeMeta b {
+  color: var(--cr-text);
+}
+
+.statusPill {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  color: var(--cr-teal);
+  background: rgba(34, 211, 166, 0.12);
+  border: 1px solid rgba(34, 211, 166, 0.4);
+  padding: 6px 13px;
+  border-radius: 999px;
+}
+
+.statStrip {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 1000px) {
+  .statStrip {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.statBox {
+  background: var(--cr-panel);
+  border: 1px solid var(--cr-border);
+  border-radius: 15px;
+  padding: 16px 16px 14px;
+}
+
+.statIc {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.statVal {
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.statLbl {
+  font-size: 11px;
+  color: var(--cr-muted-dim);
+  margin-top: 3px;
+}
+
+.controlsRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.searchBox {
+  flex: 1;
+  min-width: 220px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: var(--cr-panel2);
+  border: 1.5px solid var(--cr-border);
+  border-radius: 12px;
+  padding: 11px 15px;
+}
+
+.searchBox input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--cr-text);
+  font-size: 13.5px;
+  font-family: inherit;
+}
+
+.filterChip {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--cr-muted);
+  background: var(--cr-panel2);
+  border: 1.5px solid var(--cr-border);
+  padding: 9px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.filterChipActive {
+  color: var(--cr-teal);
+  border-color: rgba(34, 211, 166, 0.45);
+  background: rgba(34, 211, 166, 0.08);
+}
+
+.primaryBtn {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #04140f;
+  background: var(--cr-teal);
+  border: none;
+  padding: 11px 17px;
+  border-radius: 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ghostBtn {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--cr-text);
+  background: var(--cr-panel2);
+  border: 1.5px solid var(--cr-border);
+  padding: 11px 17px;
+  border-radius: 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ghostBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tableCard {
+  background: var(--cr-panel);
+  border: 1px solid var(--cr-border);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.tableScroll {
+  overflow-x: auto;
+}
+
+.tableCard table {
+  width: 100%;
+  min-width: 960px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.tableCard thead th {
+  text-align: left;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  color: var(--cr-muted-dim);
+  text-transform: uppercase;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--cr-border);
+  background: var(--cr-panel2);
+  white-space: nowrap;
+}
+
+.tableCard tbody td {
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--cr-border);
+  vertical-align: middle;
+}
+
+.tableCard tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.tableCard tbody tr:hover {
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.stuName {
+  font-weight: 700;
+}
+
+.stuRoll {
+  font-size: 11px;
+  color: var(--cr-muted-dim);
+  margin-top: 1px;
+}
+
+.classPill {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+
+.classXi {
+  color: var(--cr-blue);
+  background: rgba(79, 163, 232, 0.12);
+}
+
+.classXii {
+  color: var(--cr-purple);
+  background: rgba(154, 140, 242, 0.12);
+}
+
+.levelBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+}
+
+.levelDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.scoreCell {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.scoreTrack {
+  width: 60px;
+  height: 6px;
+  border-radius: 99px;
+  background: var(--cr-panel3);
+  overflow: hidden;
+}
+
+.scoreFill {
+  height: 100%;
+  border-radius: 99px;
+}
+
+.scoreTxt {
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.feesPill {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.feesYes {
+  color: var(--cr-teal);
+  background: rgba(34, 211, 166, 0.12);
+}
+
+.feesNo {
+  color: var(--cr-red);
+  background: rgba(240, 101, 79, 0.12);
+}
+
+.statusDotRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--cr-muted);
+}
+
+.statusDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.commentCell {
+  font-size: 12px;
+  color: var(--cr-muted);
+  max-width: 200px;
+}
+
+.commentCell input {
+  width: 100%;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--cr-muted);
+  font-size: 12px;
+  font-family: inherit;
+}
+
+.commentCell input:focus {
+  color: var(--cr-text);
+}
+
+.tableFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+  font-size: 11.5px;
+  color: var(--cr-muted-dim);
+}
+
+.tableFoot b {
+  color: var(--cr-text);
+}
+
+.emptyRow {
+  text-align: center;
+  color: var(--cr-muted);
+  padding: 28px 16px !important;
+}
+
+.loading,
+.error {
+  color: var(--cr-muted);
+  text-align: center;
+  padding: 48px 16px;
+}
+
+.error {
+  color: var(--cr-red);
+}

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { GlassCard } from "@/components/common/glass-card";
 import { MotionFade } from "@/components/common/motion-fade";
-import { TesterToolsPanel } from "@/components/profile/tester-tools-panel";
+import { AdminToolsShell } from "@/components/profile/admin-tools-shell";
 import { PageHeader } from "@/components/shell/page-header";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -122,7 +122,7 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <TesterToolsPanel />
+          {isAdmin ? <AdminToolsShell /> : null}
 
           {isAdmin ? (
             <div className="space-y-3">

@@ -20,12 +20,23 @@ import { useAppStore } from "@/store/useAppStore";
 const pageTitles: Record<string, string> = {
   "/home": "Home",
   "/signin": "Sign-in & Walkthrough",
+  "/college/signin": "College Registration",
+  "/college/pending": "College Application",
+  "/college/portal": "College Portal",
   "/levels": "Level Map",
   "/leaderboard": "Leaderboard",
   "/rewards": "Rewards",
   "/profile": "Profile",
   "/challenge": "Daily Challenge",
 };
+
+function isCollegeAuthPath(pathname: string): boolean {
+  return (
+    pathname === "/college/signin" ||
+    pathname === "/college/pending" ||
+    pathname === "/college/portal"
+  );
+}
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -35,6 +46,7 @@ export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
   const hasHydrated = useAppStore((s) => s.hasHydrated);
   const isAuthPage = pathname === "/signin";
+  const isCollegeAuthPage = isCollegeAuthPath(pathname);
   const isChallengePage = pathname === "/challenge";
   const isLevelsPage = pathname === "/levels";
   const title =
@@ -42,7 +54,11 @@ export function AppShell({ children }: AppShellProps) {
 
   return (
     <AuthGate>
-      {isAuthPage ? (
+      {isCollegeAuthPage ? (
+        <div className="min-h-dvh overflow-y-auto bg-[#070B0D]">
+          <PageTransition>{children}</PageTransition>
+        </div>
+      ) : isAuthPage ? (
         <div className="flex h-dvh flex-col overflow-hidden bg-background bg-mesh">
           <header className="flex h-12 shrink-0 items-center border-b border-border/50 px-4 sm:px-6">
             <EduDecaLogo />
