@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 import styles from "@/components/college/college-registration.module.css";
 import { readCollegeRegistrationDraft } from "@/lib/college/registration";
+import { submitCollegeApplicationWithUploads } from "@/lib/college/submit-application";
 import { supabase } from "@/lib/supabase/client";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -32,17 +33,11 @@ export function CollegePendingView() {
       try {
         const draft = readCollegeRegistrationDraft();
         if (draft?.institutionName.trim()) {
-          const res = await fetch("/api/college/applications", {
-            method: "POST",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ draft }),
-          });
-          if (!res.ok) {
-            const json = (await res.json().catch(() => ({}))) as { error?: string };
+          const result = await submitCollegeApplicationWithUploads(draft);
+          if (!result.ok) {
             if (!cancelled) {
               setStatus("error");
-              setError(json.error || "Could not save your college application.");
+              setError(result.error);
             }
             return;
           }

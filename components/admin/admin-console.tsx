@@ -83,6 +83,8 @@ export function AdminConsole() {
             ...a,
             xiFileName: a.xiFileName ?? null,
             xiiFileName: a.xiiFileName ?? null,
+            xiStoredRelPath: a.xiStoredRelPath ?? null,
+            xiiStoredRelPath: a.xiiStoredRelPath ?? null,
             roster: Array.isArray(a.roster) ? a.roster : [],
           })),
         );
@@ -92,6 +94,8 @@ export function AdminConsole() {
             ...a,
             xiFileName: a.xiFileName ?? null,
             xiiFileName: a.xiiFileName ?? null,
+            xiStoredRelPath: a.xiStoredRelPath ?? null,
+            xiiStoredRelPath: a.xiiStoredRelPath ?? null,
             roster: Array.isArray(a.roster) ? a.roster : [],
           })),
         );
@@ -429,26 +433,39 @@ export function AdminConsole() {
 
                 <h3 className={styles.sectionTitle}>Uploaded student lists</h3>
                 <div className={styles.detailGrid}>
-                  <DetailField
-                    label="Class XI file"
-                    value={
-                      selected.xiFileName?.trim()
-                        ? selected.xiFileName
-                        : "Not uploaded (optional)"
-                    }
-                  />
-                  <DetailField
-                    label="Class XII file"
-                    value={
-                      selected.xiiFileName?.trim()
-                        ? selected.xiiFileName
-                        : "Not uploaded (optional)"
-                    }
-                  />
+                  <div className={styles.detailField}>
+                    <div className={styles.detailLabel}>Class XI file</div>
+                    <div className={styles.detailValue}>
+                      {selected.xiFileName?.trim() || "Not uploaded (optional)"}
+                    </div>
+                    {selected.xiStoredRelPath ? (
+                      <a
+                        className={styles.downloadLink}
+                        href={`/api/college/uploads?applicationId=${encodeURIComponent(selected.id)}&kind=xi`}
+                      >
+                        Download XI spreadsheet
+                      </a>
+                    ) : null}
+                  </div>
+                  <div className={styles.detailField}>
+                    <div className={styles.detailLabel}>Class XII file</div>
+                    <div className={styles.detailValue}>
+                      {selected.xiiFileName?.trim() || "Not uploaded (optional)"}
+                    </div>
+                    {selected.xiiStoredRelPath ? (
+                      <a
+                        className={styles.downloadLink}
+                        href={`/api/college/uploads?applicationId=${encodeURIComponent(selected.id)}&kind=xii`}
+                      >
+                        Download XII spreadsheet
+                      </a>
+                    ) : null}
+                  </div>
                 </div>
                 <p className={styles.hint}>
-                  Upload names are stored for review. File contents are not kept on the server
-                  in this phase — contact the institution if you need the spreadsheet itself.
+                  When a college attaches .csv or .xlsx lists, the files are stored with the
+                  application. Use Download above to open them. Older applications may only
+                  show a filename if they were submitted before file storage was enabled.
                 </p>
 
                 <h3 className={styles.sectionTitle}>Principal</h3>

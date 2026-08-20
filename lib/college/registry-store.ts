@@ -28,10 +28,11 @@ export type CollegeApplication = {
   contactMobile: string;
   contactEmail: string;
   pledge: boolean;
-  /** Optional Class XI student-list upload filename (file bytes not stored). */
   xiFileName: string | null;
-  /** Optional Class XII student-list upload filename (file bytes not stored). */
   xiiFileName: string | null;
+  /** Relative path under data/college-uploads (admin download). */
+  xiStoredRelPath: string | null;
+  xiiStoredRelPath: string | null;
 };
 
 export type CollegeRosterStudent = {
@@ -138,6 +139,10 @@ export async function upsertCollegeApplication(input: {
           email: input.email,
           status: "approved",
           verifiedAt: existing.verifiedAt,
+          xiStoredRelPath: existing.xiStoredRelPath ?? null,
+          xiiStoredRelPath: existing.xiiStoredRelPath ?? null,
+          xiFileName: fields.xiFileName ?? existing.xiFileName ?? null,
+          xiiFileName: fields.xiiFileName ?? existing.xiiFileName ?? null,
         };
         registry.applications = registry.applications.map((a) =>
           a.id === existing.id ? merged : a,
@@ -153,6 +158,10 @@ export async function upsertCollegeApplication(input: {
         status: "pending",
         verifiedAt: null,
         submittedAt: new Date().toISOString(),
+        xiStoredRelPath: existing.xiStoredRelPath ?? null,
+        xiiStoredRelPath: existing.xiiStoredRelPath ?? null,
+        xiFileName: fields.xiFileName ?? existing.xiFileName ?? null,
+        xiiFileName: fields.xiiFileName ?? existing.xiiFileName ?? null,
       };
       registry.applications = registry.applications.map((a) =>
         a.id === existing.id ? merged : a,
@@ -168,6 +177,8 @@ export async function upsertCollegeApplication(input: {
       status: "pending",
       submittedAt: new Date().toISOString(),
       verifiedAt: null,
+      xiStoredRelPath: null,
+      xiiStoredRelPath: null,
       ...fields,
     };
     registry.applications.push(created);
@@ -201,6 +212,8 @@ export async function listAllCollegeApplicationsForAdmin(): Promise<
       ...app,
       xiFileName: app.xiFileName ?? null,
       xiiFileName: app.xiiFileName ?? null,
+      xiStoredRelPath: app.xiStoredRelPath ?? null,
+      xiiStoredRelPath: app.xiiStoredRelPath ?? null,
       roster: [...roster].sort((a, b) => a.displayName.localeCompare(b.displayName)),
     };
   });
@@ -219,6 +232,38 @@ export async function verifyCollegeApplication(
       ...current,
       status: "approved",
       verifiedAt: new Date().toISOString(),
+    };
+    registry.applications[idx] = next;
+    await writeCollegeRegistry(registry);
+    return next;
+  });
+}
+
+export async function getCollegeApplicationById(
+  applicationId: string,
+): Promise<CollegeApplication | null> {
+  const registry = await readCollegeRegistry();
+  return registry.applications.find((a) => a.id === applicationId) ?? null;
+}
+
+export async function attachCollegeUploadPaths(input: {
+  applicationId: string;
+  xi?: { fileName: string; storedRelPath: string } | null;
+  xii?: { fileName: string; storedRelPath: string } | null;
+}): Promise<CollegeApplication | null> {
+  return withRegistryLock(async () => {
+    const registry = await readCollegeRegistry();
+    const idx = registry.applications.findIndex((a) => a.id === input.applicationId);
+    if (idx < 0) return null;
+    const current = registry.applications[idx];
+    if (!current) return null;
+
+    const next: CollegeApplication = {
+      ...current,
+      xiFileName: input.xi?.fileName ?? current.xiFileName ?? null,
+      xiiFileName: input.xii?.fileName ?? current.xiiFileName ?? null,
+      xiStoredRelPath: input.xi?.storedRelPath ?? current.xiStoredRelPath ?? null,
+      xiiStoredRelPath: input.xii?.storedRelPath ?? current.xiiStoredRelPath ?? null,
     };
     registry.applications[idx] = next;
     await writeCollegeRegistry(registry);

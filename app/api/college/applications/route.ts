@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { isTesterInvestorEmail } from "@/lib/admin/tester-allowlist";
 import {
+  attachCollegeUploadPaths,
   getCollegeApplicationForUser,
   listAllCollegeApplicationsForAdmin,
   listPendingCollegeApplications,
@@ -12,6 +13,7 @@ import {
   emptyCollegeRegistrationDraft,
   type CollegeRegistrationDraft,
 } from "@/lib/college/registration";
+import { saveCollegeUploadFile } from "@/lib/college/upload-store";
 import { createSupabaseServer } from "@/lib/supabase/server";
 
 function isCollegeApplicationPayloadReady(draft: CollegeRegistrationDraft): boolean {
@@ -36,6 +38,41 @@ async function requireUser() {
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) return null;
   return { user: data.user, supabase };
+}
+
+async function parseApplicationPost(request: Request): Promise<{
+  draft: CollegeRegistrationDraft;
+  xiFile: File | null;
+  xiiFile: File | null;
+}> {
+  const contentType = request.headers.get("content-type") ?? "";
+
+  if (contentType.includes("multipart/form-data")) {
+    const form = await request.formData();
+    const rawDraft = form.get("draft");
+    let partial: Partial<CollegeRegistrationDraft> = {};
+    if (typeof rawDraft === "string") {
+      try {
+        partial = JSON.parse(rawDraft) as Partial<CollegeRegistrationDraft>;
+      } catch {
+        partial = {};
+      }
+    }
+    const xi = form.get("xiFile");
+    const xii = form.get("xiiFile");
+    return {
+      draft: { ...emptyCollegeRegistrationDraft(), ...partial },
+      xiFile: xi instanceof File && xi.size > 0 ? xi : null,
+      xiiFile: xii instanceof File && xii.size > 0 ? xii : null,
+    };
+  }
+
+  const body = (await request.json()) as { draft?: Partial<CollegeRegistrationDraft> };
+  return {
+    draft: { ...emptyCollegeRegistrationDraft(), ...(body.draft ?? {}) },
+    xiFile: null,
+    xiiFile: null,
+  };
 }
 
 export async function GET() {
@@ -63,17 +100,14 @@ export async function POST(request: Request) {
   }
   const { user, supabase } = auth;
 
-  let body: { draft?: Partial<CollegeRegistrationDraft> };
+  let parsed: Awaited<ReturnType<typeof parseApplicationPost>>;
   try {
-    body = (await request.json()) as { draft?: Partial<CollegeRegistrationDraft> };
+    parsed = await parseApplicationPost(request);
   } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const draft: CollegeRegistrationDraft = {
-    ...emptyCollegeRegistrationDraft(),
-    ...(body.draft ?? {}),
-  };
+  const { draft, xiFile, xiiFile } = parsed;
 
   if (!isCollegeApplicationPayloadReady(draft)) {
     return NextResponse.json(
@@ -82,13 +116,58 @@ export async function POST(request: Request) {
     );
   }
 
-  const application = await upsertCollegeApplication({
+  if (xiFile && !draft.xiFileName) {
+    draft.xiFileName = xiFile.name;
+  }
+  if (xiiFile && !draft.xiiFileName) {
+    draft.xiiFileName = xiiFile.name;
+  }
+
+  let application = await upsertCollegeApplication({
     userId: user.id,
     email: user.email ?? null,
     draft,
   });
 
-  // Persist identity fields onto existing edudeca_profiles columns (no schema change).
+  try {
+    const xiSaved = xiFile
+      ? await saveCollegeUploadFile({
+          userId: user.id,
+          kind: "xi",
+          originalFileName: xiFile.name,
+          bytes: Buffer.from(await xiFile.arrayBuffer()),
+        })
+      : null;
+    const xiiSaved = xiiFile
+      ? await saveCollegeUploadFile({
+          userId: user.id,
+          kind: "xii",
+          originalFileName: xiiFile.name,
+          bytes: Buffer.from(await xiiFile.arrayBuffer()),
+        })
+      : null;
+
+    if (xiSaved || xiiSaved) {
+      const updated = await attachCollegeUploadPaths({
+        applicationId: application.id,
+        xi: xiSaved
+          ? { fileName: xiSaved.originalFileName, storedRelPath: xiSaved.storedRelPath }
+          : null,
+        xii: xiiSaved
+          ? { fileName: xiiSaved.originalFileName, storedRelPath: xiiSaved.storedRelPath }
+          : null,
+      });
+      if (updated) application = updated;
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Could not save uploaded files";
+    const status =
+      typeof err === "object" && err && "status" in err && typeof (err as { status: unknown }).status === "number"
+        ? (err as { status: number }).status
+        : 500;
+    return NextResponse.json({ error: message, application }, { status });
+  }
+
   await supabase.from("edudeca_profiles").upsert(
     {
       id: user.id,

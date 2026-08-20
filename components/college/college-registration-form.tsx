@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import styles from "@/components/college/college-registration.module.css";
+import { stageCollegeUploadFile } from "@/lib/college/pending-upload-files";
 import {
   AUTH_NEXT_COOKIE,
   emptyCollegeRegistrationDraft,
@@ -13,6 +14,7 @@ import {
   writeCollegeRegistrationDraft,
   type CollegeRegistrationDraft,
 } from "@/lib/college/registration";
+import { submitCollegeApplicationWithUploads } from "@/lib/college/submit-application";
 import { getCitiesForState, INDIAN_STATES_AND_UTS } from "@/lib/signin/india-geo";
 import { supabase } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -117,15 +119,9 @@ export function CollegeRegistrationForm() {
       // Already signed in (e.g. student account) — submit application and go to pending.
       const { data: sessionData } = await supabase.auth.getSession();
       if (sessionData.session?.user) {
-        const res = await fetch("/api/college/applications", {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ draft }),
-        });
-        if (!res.ok) {
-          const json = (await res.json().catch(() => ({}))) as { error?: string };
-          setError(json.error || "Could not submit college application.");
+        const result = await submitCollegeApplicationWithUploads(draft);
+        if (!result.ok) {
+          setError(result.error);
           setSigningIn(false);
           return;
         }
@@ -494,7 +490,7 @@ export function CollegeRegistrationForm() {
               <div className={styles.uploadTitle}>Load Class XI student data</div>
               <div className={styles.uploadSub}>
                 {draft.xiFileName
-                  ? `${draft.xiFileName} · ready to import`
+                  ? `${draft.xiFileName} · ready to upload`
                   : "No file selected · .csv or .xlsx"}
               </div>
             </div>
@@ -502,11 +498,19 @@ export function CollegeRegistrationForm() {
               Choose file
               <input
                 type="file"
-                accept=".csv,.xlsx"
+                accept=".csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
-                  patch({ xiFileName: file.name });
+                  void (async () => {
+                    const staged = await stageCollegeUploadFile("xi", file);
+                    if (!staged.ok) {
+                      setError(staged.error);
+                      e.target.value = "";
+                      return;
+                    }
+                    patch({ xiFileName: file.name });
+                  })();
                 }}
               />
             </label>
@@ -520,7 +524,7 @@ export function CollegeRegistrationForm() {
               <div className={styles.uploadTitle}>Load Class XII student data</div>
               <div className={styles.uploadSub}>
                 {draft.xiiFileName
-                  ? `${draft.xiiFileName} · ready to import`
+                  ? `${draft.xiiFileName} · ready to upload`
                   : "No file selected · .csv or .xlsx"}
               </div>
             </div>
@@ -528,18 +532,30 @@ export function CollegeRegistrationForm() {
               Choose file
               <input
                 type="file"
-                accept=".csv,.xlsx"
+                accept=".csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
-                  patch({ xiiFileName: file.name });
+                  void (async () => {
+                    const staged = await stageCollegeUploadFile("xii", file);
+                    if (!staged.ok) {
+                      setError(staged.error);
+                      e.target.value = "";
+                      return;
+                    }
+                    patch({ xiiFileName: file.name });
+                  })();
                 }}
               />
             </label>
           </div>
           <div className={styles.fieldNote}>
             <span>ⓘ</span>
-            <span>You can also add students later from the college portal after sign-in.</span>
+            <span>
+              Optional. Files are uploaded with your application so EduDeca admins can
+              download them during verification. You can also add students later from the
+              college portal.
+            </span>
           </div>
         </div>
 
