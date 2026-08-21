@@ -5,6 +5,7 @@ import {
   getCollegeApplicationForUser,
   getRosterForInstitution,
 } from "@/lib/college/registry-store";
+import { studentTrackFromDisciplines } from "@/lib/college/student-track";
 import { createSupabaseServer } from "@/lib/supabase/server";
 
 function relativeLastActive(isoDate: string | null): string {
@@ -18,13 +19,6 @@ function relativeLastActive(isoDate: string | null): string {
   if (days === 1) return "Yesterday";
   if (days > 1 && days < 14) return `${days} days ago`;
   return day;
-}
-
-function trackLabel(math: boolean, bio: boolean): string {
-  if (math && bio) return "PCM+B";
-  if (math) return "PCM";
-  if (bio) return "PCB";
-  return "PC";
 }
 
 export async function GET() {
@@ -59,6 +53,27 @@ export async function GET() {
       ? 0
       : roster.reduce((sum, s) => sum + s.campaignLevel, 0) / roster.length;
 
+  const userIds = roster.map((s) => s.userId);
+  const disciplinesByUser = new Map<string, string[]>();
+  if (userIds.length > 0) {
+    const { data: progressRows, error: progressError } = await supabase
+      .from("edudeca_user_progress")
+      .select("user_id, disciplines")
+      .in("user_id", userIds);
+    if (progressError) {
+      console.error("[college/portal] disciplines lookup", progressError);
+    } else {
+      for (const row of progressRows ?? []) {
+        if (!row || typeof row.user_id !== "string") continue;
+        const raw = row.disciplines;
+        disciplinesByUser.set(
+          row.user_id,
+          Array.isArray(raw) ? raw.map((id) => String(id)) : [],
+        );
+      }
+    }
+  }
+
   const students = roster.map((s) => {
     const active =
       !!s.lastChallengeDate &&
@@ -69,7 +84,7 @@ export async function GET() {
       name: s.displayName,
       roll: s.studentCode?.trim() || "—",
       cls: s.classLevel === 12 ? "XII" : s.classLevel === 11 ? "XI" : "—",
-      track: trackLabel(approved.math, approved.bio),
+      track: studentTrackFromDisciplines(disciplinesByUser.get(s.userId)),
       level: s.campaignLevel,
       // Per-level % is not in present DB — portal shows em dash until a real score exists.
       score: null as number | null,
