@@ -417,13 +417,17 @@ export async function syncStudentOntoMatchingCollegeRoster(input: {
   displayName: string;
   studentCode: string | null;
   institutionName: string | null | undefined;
+  state: string | null | undefined;
+  city: string | null | undefined;
   classLevel: number | null | undefined;
   campaignLevel: number;
   isProctoredPaid: boolean;
   lastChallengeDate: string | null;
 }): Promise<{ matched: boolean; institutionKey: string | null }> {
   const key = normalizeInstitutionName(input.institutionName);
-  if (!key) return { matched: false, institutionKey: null };
+  const state = (input.state ?? "").trim();
+  const city = (input.city ?? "").trim();
+  if (!key || !state || !city) return { matched: false, institutionKey: null };
 
   const supabase = await createSupabaseServer();
   const { data, error } = await supabase.rpc("edudeca_sync_student_college_roster", {
@@ -434,6 +438,8 @@ export async function syncStudentOntoMatchingCollegeRoster(input: {
     p_campaign_level: input.campaignLevel,
     p_is_proctored_paid: input.isProctoredPaid,
     p_last_challenge_date: input.lastChallengeDate,
+    p_state: state,
+    p_city: city,
   });
 
   if (error) {

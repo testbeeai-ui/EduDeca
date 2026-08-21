@@ -20,7 +20,7 @@ export async function POST() {
 
   const { data: profile } = await supabase
     .from("edudeca_profiles")
-    .select("institution_name, class_level")
+    .select("institution_name, class_level, state, city")
     .eq("id", userId)
     .maybeSingle();
 
@@ -45,6 +45,8 @@ export async function POST() {
       profile && typeof profile.institution_name === "string"
         ? profile.institution_name
         : null,
+    state: profile && typeof profile.state === "string" ? profile.state : null,
+    city: profile && typeof profile.city === "string" ? profile.city : null,
     classLevel:
       profile && typeof profile.class_level === "number" ? profile.class_level : null,
     campaignLevel:
