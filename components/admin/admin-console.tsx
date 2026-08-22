@@ -156,6 +156,12 @@ export function AdminConsole() {
     name: string,
     action: "approve" | "reject" | "comment",
   ) => {
+    if (action === "reject" && !feedbackDraft.trim()) {
+      const ok = window.confirm(
+        "Reject without a message to the college? They won’t see why it was rejected.",
+      );
+      if (!ok) return;
+    }
     setBusyId(id);
     setMessage(null);
     try {

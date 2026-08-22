@@ -332,24 +332,19 @@ export async function listAllCollegeApplicationsForAdmin(): Promise<
   });
 }
 
-export async function verifyCollegeApplication(
-  applicationId: string,
-  comment?: string | null,
-): Promise<CollegeApplication | null> {
-  return decideCollegeApplication(applicationId, "approve", comment);
-}
-
 export async function decideCollegeApplication(
   applicationId: string,
   action: VerificationAction,
   comment?: string | null,
-): Promise<CollegeApplication | null> {
+): Promise<
+  | { ok: true; application: CollegeApplication }
+  | { ok: false; error: "invalid_comment" | "not_found" | "update_failed" }
+> {
   let decision;
   try {
     decision = buildVerificationDecision({ action, comment });
-  } catch (e) {
-    console.error("[college] invalid verification decision", e);
-    return null;
+  } catch {
+    return { ok: false, error: "invalid_comment" };
   }
 
   const patch: Record<string, unknown> = {};
@@ -372,9 +367,18 @@ export async function decideCollegeApplication(
     .maybeSingle();
   if (error) {
     console.error("[college] decide", action, error);
-    return null;
+    return { ok: false, error: "update_failed" };
   }
-  return data ? rowToApplication(data as ApplicationRow) : null;
+  if (!data) return { ok: false, error: "not_found" };
+  return { ok: true, application: rowToApplication(data as ApplicationRow) };
+}
+
+export async function verifyCollegeApplication(
+  applicationId: string,
+  comment?: string | null,
+): Promise<CollegeApplication | null> {
+  const result = await decideCollegeApplication(applicationId, "approve", comment);
+  return result.ok ? result.application : null;
 }
 
 export async function getCollegeApplicationById(

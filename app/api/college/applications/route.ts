@@ -232,22 +232,23 @@ export async function PATCH(request: Request) {
     );
   }
 
-  const application = await decideCollegeApplication(
+  const result = await decideCollegeApplication(
     body.applicationId.trim(),
     action,
     body.comment,
   );
-  if (!application) {
-    return NextResponse.json(
-      {
-        error:
-          action === "comment"
-            ? "Comment text is required"
-            : "Not found or update failed",
-      },
-      { status: action === "comment" ? 400 : 404 },
-    );
+  if (!result.ok) {
+    if (result.error === "invalid_comment") {
+      return NextResponse.json(
+        { error: "Comment text is required" },
+        { status: 400 },
+      );
+    }
+    if (result.error === "not_found") {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    return NextResponse.json({ error: "Update failed" }, { status: 500 });
   }
 
-  return NextResponse.json({ application });
+  return NextResponse.json({ application: result.application });
 }
