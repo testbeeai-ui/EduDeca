@@ -93,6 +93,32 @@ export function selectTrackOption(
   }
 }
 
+export type PathFamily = "math" | "bio";
+
+/** Which Decathlon path is selected (Math set vs Bio set), if any. */
+export function selectedPathFamily(lineup: DisciplineLineup): PathFamily | null {
+  const trackA = lineup[TRACK_A_SLOT];
+  if (!trackA) return null;
+  const family = DISCIPLINES[trackA].family;
+  if (family === "math" || family === "bio") return family;
+  return null;
+}
+
+/**
+ * Pick a whole path set (v3.1 UI):
+ * Track A = Mathematics + Applied Mathematics
+ * Track B = Biology + Biotechnology
+ * Radio-style: selecting the same path again keeps it selected.
+ */
+export function selectPathFamily(
+  lineup: DisciplineLineup,
+  family: PathFamily,
+): DisciplineLineup {
+  if (selectedPathFamily(lineup) === family) return lineup;
+  const seed: DisciplineId = family === "math" ? "mat" : "bio";
+  return selectTrackOption(lineup, "A", seed);
+}
+
 export function validateLineup(ids: unknown): DisciplineLineup | null {
   if (!Array.isArray(ids) || ids.length !== LINEUP_SIZE) return null;
   const allowed = new Set(Object.keys(DISCIPLINES));

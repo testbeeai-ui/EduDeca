@@ -2,7 +2,6 @@
 
 import {
   ArrowLeft,
-  Atom,
   Dna,
   Microscope,
   Ruler,
@@ -12,7 +11,6 @@ import type { LucideIcon } from "lucide-react";
 
 import {
   DISCIPLINES,
-  DISCIPLINE_SLOTS,
   LINEUP_SIZE,
   type DisciplineDef,
   type DisciplineId,
@@ -20,10 +18,12 @@ import {
 import {
   filledCount,
   isLineupComplete,
-  selectTrackOption,
+  selectPathFamily,
+  selectedPathFamily,
   TRACK_A_SLOT,
   TRACK_B_SLOT,
   type DisciplineLineup,
+  type PathFamily,
 } from "@/lib/disciplines/selection";
 import { cn } from "@/lib/utils";
 
@@ -75,17 +75,6 @@ const LOCKED_CHIP_IDS: DisciplineId[] = [
   "ent",
 ];
 
-const PATH_SELECTED: Record<"teal" | "purple", { box: string; card: string }> = {
-  teal: {
-    box: "bg-[#1D9E75] border-[#1D9E75]",
-    card: "border-[rgba(29,158,117,0.7)] bg-[rgba(29,158,117,0.08)]",
-  },
-  purple: {
-    box: "bg-[#7F77DD] border-[#7F77DD]",
-    card: "border-[rgba(127,119,221,0.7)] bg-[rgba(127,119,221,0.08)]",
-  },
-};
-
 const CHIP_LABEL: Partial<Record<DisciplineId, string>> = {
   eng: "Verbal",
   eco: "Quantitative",
@@ -105,10 +94,7 @@ const CHIP_TONE_FOR: Partial<Record<DisciplineId, ChipTone>> = {
   ent: "gold",
 };
 
-const HIDE_SCROLLBAR =
-  "overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
-
-/** Visual lineup order from the Step 5 mock — storage slots stay 1–10. */
+/** Visual lineup order from Step 5 v3.1 — storage slots stay 1–10. */
 const LINEUP_DISPLAY: Array<{
   n: number;
   tone: ChipTone;
@@ -127,6 +113,43 @@ const LINEUP_DISPLAY: Array<{
   { n: 9, tone: "teal", slot: TRACK_A_SLOT, emptyLabel: "—" },
   { n: 10, tone: "purple", slot: TRACK_B_SLOT, emptyLabel: "—" },
 ];
+
+/** Path sets matching edudeca_step5_v3.1.html Track A / Track B cards. */
+const PATH_SETS: Array<{
+  family: PathFamily;
+  title: string;
+  selectedTone: "teal" | "purple";
+  subjects: DisciplineId[];
+}> = [
+  {
+    family: "math",
+    title: "Track A",
+    selectedTone: "teal",
+    subjects: ["mat", "amat"],
+  },
+  {
+    family: "bio",
+    title: "Track B",
+    selectedTone: "purple",
+    subjects: ["bio", "biotech"],
+  },
+];
+
+const PATH_SELECTED: Record<"teal" | "purple", { box: string; card: string; set: string }> = {
+  teal: {
+    box: "bg-[#1D9E75] border-[#1D9E75]",
+    card: "border-[rgba(29,158,117,0.7)] bg-[rgba(29,158,117,0.08)]",
+    set: "border-[rgba(29,158,117,0.7)] bg-[rgba(29,158,117,0.05)]",
+  },
+  purple: {
+    box: "bg-[#7F77DD] border-[#7F77DD]",
+    card: "border-[rgba(127,119,221,0.7)] bg-[rgba(127,119,221,0.08)]",
+    set: "border-[rgba(29,158,117,0.7)] bg-[rgba(29,158,117,0.05)]",
+  },
+};
+
+const HIDE_SCROLLBAR =
+  "overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
 
 interface DisciplinePickerProps {
   lineup: DisciplineLineup;
@@ -157,35 +180,30 @@ function LockedChip({ def }: { def: DisciplineDef }) {
   );
 }
 
-function PathOption({
-  def,
+function PathSubjectRow({
+  id,
   selected,
   selectedTone,
-  interactive,
-  onClick,
 }: {
-  def: DisciplineDef;
+  id: DisciplineId;
   selected: boolean;
   selectedTone: "teal" | "purple";
-  interactive: boolean;
-  onClick?: () => void;
 }) {
-  const Icon = TRACK_ICONS[def.id] ?? Atom;
+  const def = DISCIPLINES[id];
+  const Icon = TRACK_ICONS[id] ?? Sigma;
   const selectedBox = PATH_SELECTED[selectedTone].box;
   const selectedCard = PATH_SELECTED[selectedTone].card;
 
-  const className = cn(
-    "flex min-h-11 w-full items-center justify-between rounded-[9px] border-[1.5px] px-3 py-2.5 text-left transition-colors sm:px-3.5 sm:py-3",
-    selected ? selectedCard : "border-[#1E2430] bg-transparent",
-    interactive && "cursor-pointer hover:border-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1D9E75]",
-    !interactive && "cursor-default",
-  );
-
-  const body = (
-    <>
+  return (
+    <div
+      className={cn(
+        "flex min-h-11 w-full items-center justify-between rounded-[9px] border-[1.5px] px-3 py-2.5 sm:px-3.5 sm:py-3",
+        selected ? selectedCard : "border-[#1E2430] bg-transparent",
+      )}
+    >
       <span className="flex min-w-0 items-center gap-2 text-[13px] font-semibold text-[#F2F4F8] sm:gap-2.5 sm:text-[13.5px]">
         <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-lg bg-white/[0.04] text-[#8B93A3]">
-          <Icon className="size-3.5" />
+          <Icon className="size-3.5" aria-hidden />
         </span>
         <span className="truncate">{def.name}</span>
       </span>
@@ -198,69 +216,65 @@ function PathOption({
       >
         {selected ? "✓" : ""}
       </span>
-    </>
-  );
-
-  if (!interactive) {
-    return (
-      <div className={className}>{body}</div>
-    );
-  }
-
-  return (
-    <button type="button" onClick={onClick} aria-pressed={selected} className={className}>
-      {body}
-    </button>
+    </div>
   );
 }
 
-function TrackColumn({
+function PathTrackSet({
   title,
-  slotLabel,
-  options,
-  selectedId,
+  subjects,
+  selected,
   selectedTone,
-  interactive,
-  hint,
-  onPick,
+  onSelect,
 }: {
   title: string;
-  slotLabel: string;
-  options: DisciplineId[];
-  selectedId: DisciplineId | null;
+  subjects: DisciplineId[];
+  selected: boolean;
   selectedTone: "teal" | "purple";
-  interactive: boolean;
-  hint?: string;
-  onPick?: (id: DisciplineId) => void;
+  onSelect: () => void;
 }) {
   return (
-    <div className="min-w-0 rounded-xl border border-[#1E2430] bg-white/[0.015] px-3.5 py-3.5 sm:px-4">
-      <div className="mb-2.5 flex items-baseline justify-between gap-2">
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={selected}
+      className={cn(
+        "min-w-0 rounded-xl border px-4 py-3.5 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1D9E75]",
+        selected
+          ? PATH_SELECTED[selectedTone].set
+          : "border-[#1E2430] bg-white/[0.015] hover:border-white/20",
+      )}
+    >
+      <div className="mb-2.5 flex items-center justify-between gap-2">
         <h3 className="text-sm font-bold text-[#F2F4F8]">{title}</h3>
-        <span className="text-[10.5px] text-[#8B93A3]">{slotLabel}</span>
+        <span
+          className={cn(
+            "inline-flex size-[22px] shrink-0 items-center justify-center rounded-full border-2",
+            selected ? "border-[#1D9E75] bg-[#1D9E75]" : "border-[#1E2430] bg-transparent",
+          )}
+          aria-hidden
+        >
+          {selected ? <span className="size-[9px] rounded-full bg-[#062017]" /> : null}
+        </span>
       </div>
-      <div className="flex flex-col gap-2" aria-live={interactive ? undefined : "polite"}>
-        {options.map((id) => (
-          <PathOption
+      <div className="pointer-events-none flex flex-col gap-2">
+        {subjects.map((id) => (
+          <PathSubjectRow
             key={id}
-            def={DISCIPLINES[id]}
-            selected={selectedId === id}
+            id={id}
+            selected={selected}
             selectedTone={selectedTone}
-            interactive={interactive}
-            onClick={onPick ? () => onPick(id) : undefined}
           />
         ))}
       </div>
-      {hint ? <p className="mt-2 text-[11px] text-[#8B93A3]">{hint}</p> : null}
-    </div>
+    </button>
   );
 }
 
 export function DisciplinePicker({ lineup, onChange, onContinue, onBack }: DisciplinePickerProps) {
   const count = filledCount(lineup);
   const complete = isLineupComplete(lineup);
-  const trackA = DISCIPLINE_SLOTS.find((s) => s.track === "A")!;
-  const trackB = DISCIPLINE_SLOTS.find((s) => s.track === "B")!;
+  const path = selectedPathFamily(lineup);
 
   return (
     <div className="flex w-full min-w-0 flex-col">
@@ -308,34 +322,27 @@ export function DisciplinePicker({ lineup, onChange, onContinue, onBack }: Disci
       <section className="mb-4 rounded-2xl border border-[#1E2430] bg-[#131722] px-3.5 py-4 sm:px-5 sm:py-[18px]">
         <div className="mb-[13px] flex flex-wrap items-center gap-2.5">
           <span className="text-[11px] font-bold tracking-[0.08em] text-[#EF9F27]">YOUR PATH</span>
-          <span className="rounded-full border border-[rgba(240,180,41,0.4)] bg-[rgba(240,180,41,0.12)] px-2.5 py-0.5 text-[11px] font-semibold text-[#F0B429]">
-            Pick 1 of 2 · 2 tracks
-          </span>
           <span className="text-xs text-[#8B93A3]">
-            Choosing Track A auto-selects its linked Track B subject
+            Pick one track — both its subjects come together
           </span>
         </div>
 
         <div className="grid grid-cols-1 items-stretch gap-4 min-[700px]:grid-cols-2">
-          <TrackColumn
-            title="Track A — pick one"
-            slotLabel={`Slot ${TRACK_A_SLOT}`}
-            options={trackA.options!}
-            selectedId={lineup[TRACK_A_SLOT]}
-            selectedTone="teal"
-            interactive
-            onPick={(id) => onChange(selectTrackOption(lineup, "A", id))}
-          />
-          <TrackColumn
-            title="Track B — auto-linked"
-            slotLabel={`Slot ${TRACK_B_SLOT}`}
-            options={trackB.options!}
-            selectedId={lineup[TRACK_B_SLOT]}
-            selectedTone="purple"
-            interactive={false}
-            hint="Follows whichever family you pick in Track A — no separate choice needed."
-          />
+          {PATH_SETS.map((set) => (
+            <PathTrackSet
+              key={set.family}
+              title={set.title}
+              subjects={set.subjects}
+              selected={path === set.family}
+              selectedTone={set.selectedTone}
+              onSelect={() => onChange(selectPathFamily(lineup, set.family))}
+            />
+          ))}
         </div>
+        <p className="mt-2 text-[11px] text-[#8B93A3]">
+          Slots {TRACK_A_SLOT} &amp; {TRACK_B_SLOT} · choosing a track locks in both of its subjects
+          together.
+        </p>
       </section>
 
       <section className="rounded-2xl border border-[#1E2430] bg-[#131722] px-3.5 py-4 sm:px-5 sm:py-[18px]">
@@ -345,10 +352,7 @@ export function DisciplinePicker({ lineup, onChange, onContinue, onBack }: Disci
             {complete ? "Ready to continue" : "1 of 10 pending"}
           </span>
         </div>
-        <div
-          data-lenis-prevent
-          className={cn("flex flex-col gap-2.5", HIDE_SCROLLBAR)}
-        >
+        <div data-lenis-prevent className={cn("flex flex-col gap-2.5", HIDE_SCROLLBAR)}>
           {[LINEUP_DISPLAY.slice(0, 5), LINEUP_DISPLAY.slice(5)].map((row, rowIndex) => (
             <div key={rowIndex} className="grid min-w-[32rem] grid-cols-5 gap-2.5 sm:min-w-0">
               {row.map((item) => {
@@ -407,7 +411,7 @@ export function DisciplinePicker({ lineup, onChange, onContinue, onBack }: Disci
         >
           {complete
             ? "Continue with your 10 disciplines →"
-            : "Choose a Track A subject to continue →"}
+            : "Choose a track to continue →"}
         </button>
       </div>
     </div>

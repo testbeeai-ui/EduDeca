@@ -8,7 +8,9 @@ import {
   isLineupComplete,
   lineupIds,
   lockEntrepreneurshipSlot,
+  selectPathFamily,
   selectTrackOption,
+  selectedPathFamily,
   TRACK_A_SLOT,
   TRACK_B_SLOT,
   ENTREPRENEURSHIP_SLOT,
@@ -45,6 +47,13 @@ const bio = selectTrackOption(fresh, "A", "bio");
 check("Track A Biology fills slot 3", bio[TRACK_A_SLOT] === "bio");
 check("Track A Biology auto-fills Biotechnology", bio[TRACK_B_SLOT] === "biotech");
 check("Track A Biology completes the 10-discipline lineup", isLineupComplete(bio) === true);
+
+const pathMath = selectPathFamily(fresh, "math");
+check("selectPathFamily math → mat + amat", pathMath[TRACK_A_SLOT] === "mat" && pathMath[TRACK_B_SLOT] === "amat");
+check("selectedPathFamily math", selectedPathFamily(pathMath) === "math");
+const pathBio = selectPathFamily(pathMath, "bio");
+check("selectPathFamily switches to bio set", pathBio[TRACK_A_SLOT] === "bio" && pathBio[TRACK_B_SLOT] === "biotech");
+check("selectPathFamily same path is radio (no clear)", selectPathFamily(pathBio, "bio") === pathBio);
 
 const cleared = selectTrackOption(math, "A", "mat");
 check("clicking Track A again clears both family slots", cleared[TRACK_A_SLOT] === null && cleared[TRACK_B_SLOT] === null);
