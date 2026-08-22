@@ -12,6 +12,10 @@ import {
   type StudentInviteStatus,
 } from "@/lib/admin/invite-types";
 import { sendCollegeStudentInviteEmail } from "@/lib/email/sendCollegeInviteEmail";
+import {
+  createEmailAdminClient,
+  getSharedEmailQuota,
+} from "@/lib/email/sharedEmailQuota";
 
 export type {
   CollegeInviteBatch,
@@ -104,13 +108,14 @@ export async function addAdminInviteBatch(
     StudentInviteRecord,
     "id" | "batchId" | "status" | "invitedAt" | "joinedAt"
   >[],
-  dailyLimit = INVITE_DAILY_LIMIT,
+  requestedBatchLimit = INVITE_DAILY_LIMIT,
 ): Promise<{
   batch: CollegeInviteBatch;
   sentCount: number;
   queuedCount: number;
   emailDelivered: number;
   emailFailed: number;
+  sharedQuota: Awaited<ReturnType<typeof getSharedEmailQuota>>;
 }> {
   const batchId = `batch-${Date.now()}`;
   const nowIso = new Date().toISOString();
@@ -122,7 +127,19 @@ export async function addAdminInviteBatch(
     if (r.classLevel === 12) xiiCount++;
   });
 
-  const statuses = planInviteStatuses(parsedRecords.length, dailyLimit);
+  // Shared EduBlast+EduDeca IST cap — never invent a separate EduDeca pool.
+  const sharedQuota = await getSharedEmailQuota();
+  const sendBudget = Math.max(
+    0,
+    Math.min(
+      Number.isFinite(requestedBatchLimit)
+        ? Math.floor(requestedBatchLimit)
+        : sharedQuota.remainingToday,
+      sharedQuota.remainingToday,
+    ),
+  );
+
+  const statuses = planInviteStatuses(parsedRecords.length, sendBudget);
   const { sentCount, queuedCount } = countPlannedStatuses(statuses);
 
   const newRecords: StudentInviteRecord[] = parsedRecords.map((rec, index) => {
@@ -141,7 +158,7 @@ export async function addAdminInviteBatch(
       joinedAt: null,
       notes: isSent
         ? null
-        : `Daily email quota reached (${dailyLimit}/day). Scheduled for tomorrow.`,
+        : `Shared org email quota reached (${sharedQuota.sentToday}/${sharedQuota.dailyLimit} sent today IST across EduBlast + EduDeca). Queued for tomorrow.`,
     };
   });
 
@@ -198,6 +215,7 @@ export async function addAdminInviteBatch(
   let emailFailed = 0;
 
   // Branded SMTP only — never inviteUserByEmail / OTP (Google Auth only).
+  // Status "sent" is provisional until SMTP + transactional_email_logs succeed.
   for (const rec of newRecords) {
     if (rec.status !== "sent") continue;
     const delivered = await deliverInviteMail(rec);
@@ -206,15 +224,43 @@ export async function addAdminInviteBatch(
       continue;
     }
     emailFailed++;
+    // Do not keep a fake "sent" that skips the shared EduBlast quota log.
     await supabase
       .from("edudeca_student_invitations")
       .update({
-        notes: "Invite saved in DB; SMTP delivery failed or not configured.",
+        status: "queued_tomorrow",
+        invited_at: null,
+        notes:
+          "SMTP delivery failed or not configured — re-queued. Shared quota only counts rows in transactional_email_logs.",
       })
       .eq("id", rec.id);
   }
 
-  return { batch, sentCount, queuedCount, emailDelivered, emailFailed };
+  if (emailFailed > 0) {
+    await refreshBatchCounts(supabase, batch.id);
+    const refreshed = (await getAdminInviteBatches(supabase)).find(
+      (b) => b.id === batch.id,
+    );
+    if (refreshed) {
+      return {
+        batch: refreshed,
+        sentCount: refreshed.sentCount,
+        queuedCount: refreshed.queuedCount,
+        emailDelivered,
+        emailFailed,
+        sharedQuota: await getSharedEmailQuota(),
+      };
+    }
+  }
+
+  return {
+    batch,
+    sentCount,
+    queuedCount,
+    emailDelivered,
+    emailFailed,
+    sharedQuota: await getSharedEmailQuota(),
+  };
 }
 
 /** Mark invites joined for the signed-in JWT email (SECURITY DEFINER RPC). */
@@ -229,17 +275,123 @@ export async function checkAndSyncStudentConversion(
   return typeof data === "number" ? data : 0;
 }
 
+/**
+ * Mark invite rows DONE (joined) when the email already exists on EduDeca profiles.
+ * Prefers SECURITY DEFINER RPC; falls back to service-role profile lookup.
+ */
+export async function reconcileInvitesAlreadyRegistered(
+  supabase: SupabaseClient,
+): Promise<number> {
+  const { data: rpcData, error: rpcError } = await supabase.rpc(
+    "edudeca_reconcile_invite_registrations",
+  );
+  if (!rpcError) {
+    return typeof rpcData === "number" ? rpcData : 0;
+  }
+
+  const admin = createEmailAdminClient();
+  if (!admin) {
+    console.error(
+      "[invitations] register reconcile skipped — RPC missing and no SUPABASE_SERVICE_ROLE_KEY",
+      rpcError.message,
+    );
+    return 0;
+  }
+
+  const { data: openInvites, error: inviteErr } = await admin
+    .from("edudeca_student_invitations")
+    .select("id, email, batch_id, notes, joined_at")
+    .neq("status", "joined");
+
+  if (inviteErr) {
+    console.error("[invitations] register reconcile invite load", inviteErr.message);
+    return 0;
+  }
+  if (!openInvites?.length) return 0;
+
+  const emails = [
+    ...new Set(
+      openInvites
+        .map((row) => normalizeInviteEmail(String(row.email ?? "")))
+        .filter(Boolean),
+    ),
+  ];
+  const emailSet = new Set(emails);
+
+  const { data: profiles, error: profileErr } = await admin
+    .from("edudeca_profiles")
+    .select("email")
+    .not("email", "is", null);
+
+  if (profileErr) {
+    console.error("[invitations] register reconcile profile load", profileErr.message);
+    return 0;
+  }
+
+  const registered = new Set<string>();
+  for (const profile of profiles ?? []) {
+    const email = normalizeInviteEmail(String(profile.email ?? ""));
+    if (email && emailSet.has(email)) registered.add(email);
+  }
+
+  if (registered.size === 0) return 0;
+
+  const nowIso = new Date().toISOString();
+  const batchIds = new Set<string>();
+  let updated = 0;
+
+  for (const row of openInvites) {
+    const email = normalizeInviteEmail(String(row.email ?? ""));
+    if (!email || !registered.has(email)) continue;
+
+    const prevNotes = typeof row.notes === "string" ? row.notes : "";
+    const note =
+      !prevNotes.trim()
+        ? "DONE — email already registered on EduDeca."
+        : /already registered/i.test(prevNotes)
+          ? prevNotes
+          : `${prevNotes} | DONE — email already registered on EduDeca.`;
+
+    const { error: upErr } = await admin
+      .from("edudeca_student_invitations")
+      .update({
+        status: "joined",
+        joined_at: (row.joined_at as string | null) ?? nowIso,
+        notes: note,
+      })
+      .eq("id", row.id);
+
+    if (upErr) {
+      console.error("[invitations] register reconcile update", upErr.message);
+      continue;
+    }
+    updated += 1;
+    if (row.batch_id) batchIds.add(String(row.batch_id));
+  }
+
+  for (const batchId of batchIds) {
+    await refreshBatchCounts(admin, batchId);
+  }
+
+  return updated;
+}
+
 export async function dispatchQueuedInvites(
   supabase: SupabaseClient,
   batchId?: string,
-  dailyLimit = INVITE_DAILY_LIMIT,
 ): Promise<{ dispatched: number; emailDelivered: number; emailFailed: number }> {
+  const sharedQuota = await getSharedEmailQuota();
+  const sendBudget = sharedQuota.remainingToday;
+  if (sendBudget <= 0) {
+    return { dispatched: 0, emailDelivered: 0, emailFailed: 0 };
+  }
+
   let query = supabase
     .from("edudeca_student_invitations")
     .select("*")
     .eq("status", "queued_tomorrow")
     .order("created_at", { ascending: true })
-    .limit(dailyLimit);
+    .limit(sendBudget);
 
   if (batchId) {
     query = query.eq("batch_id", batchId);
@@ -260,15 +412,24 @@ export async function dispatchQueuedInvites(
   for (const row of rows) {
     const invite = mapInviteRow(row as Record<string, unknown>);
     const delivered = await deliverInviteMail(invite);
+    if (!delivered) {
+      emailFailed++;
+      await supabase
+        .from("edudeca_student_invitations")
+        .update({
+          notes:
+            "Dispatch attempted; SMTP failed — still queued. Quota uses transactional_email_logs only.",
+        })
+        .eq("id", invite.id);
+      continue;
+    }
 
     const { error: upErr } = await supabase
       .from("edudeca_student_invitations")
       .update({
         status: "sent",
         invited_at: nowIso,
-        notes: delivered
-          ? "Dispatched via admin daily quota release."
-          : "Marked sent in DB; SMTP delivery failed or not configured.",
+        notes: "Dispatched via admin daily quota release (logged in transactional_email_logs).",
       })
       .eq("id", invite.id);
     if (upErr) {
@@ -276,8 +437,7 @@ export async function dispatchQueuedInvites(
       continue;
     }
     dispatched++;
-    if (delivered) emailDelivered++;
-    else emailFailed++;
+    emailDelivered++;
   }
 
   const batchIds = [...new Set(rows.map((r) => String(r.batch_id)))];
@@ -303,14 +463,28 @@ export async function resendSingleInvite(
   const delivered = await deliverInviteMail(invite);
 
   const nowIso = new Date().toISOString();
+  if (!delivered) {
+    const { data: updated, error: upErr } = await supabase
+      .from("edudeca_student_invitations")
+      .update({
+        notes: "Resend attempted; SMTP delivery failed or not configured.",
+      })
+      .eq("id", inviteId)
+      .select("*")
+      .maybeSingle();
+    if (upErr) throw new Error(upErr.message);
+    return {
+      invite: updated ? mapInviteRow(updated as Record<string, unknown>) : invite,
+      emailDelivered: false,
+    };
+  }
+
   const { data: updated, error: upErr } = await supabase
     .from("edudeca_student_invitations")
     .update({
       status: invite.status === "joined" ? "joined" : "sent",
       invited_at: nowIso,
-      notes: delivered
-        ? "Resent invite email."
-        : "Resend attempted; SMTP delivery failed or not configured.",
+      notes: "Resent invite email (logged in transactional_email_logs).",
     })
     .eq("id", inviteId)
     .select("*")
@@ -320,7 +494,7 @@ export async function resendSingleInvite(
   if (updated) await refreshBatchCounts(supabase, invite.batchId);
   return {
     invite: updated ? mapInviteRow(updated as Record<string, unknown>) : invite,
-    emailDelivered: delivered,
+    emailDelivered: true,
   };
 }
 

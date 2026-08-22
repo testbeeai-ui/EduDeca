@@ -8,9 +8,10 @@ import {
   getAdminInviteBatches,
   getAdminStudentInvites,
   parseStudentCsv,
+  reconcileInvitesAlreadyRegistered,
   resendSingleInvite,
 } from "@/lib/admin/invitations";
-import { INVITE_DAILY_LIMIT } from "@/lib/admin/invite-types";
+import { getSharedEmailQuota } from "@/lib/email/sharedEmailQuota";
 import { createSupabaseServer } from "@/lib/supabase/server";
 
 async function requireAdmin() {
@@ -32,6 +33,7 @@ export async function GET(request: Request) {
     }
 
     await checkAndSyncStudentConversion(supabase);
+    await reconcileInvitesAlreadyRegistered(supabase);
 
     const { searchParams } = new URL(request.url);
     const collegeFilter = searchParams.get("collegeName");
@@ -44,25 +46,20 @@ export async function GET(request: Request) {
       invites = invites.filter((i) => i.collegeName === collegeFilter);
     }
 
-    const startOfUtcDay = new Date();
-    startOfUtcDay.setUTCHours(0, 0, 0, 0);
-    const sentToday = invites.filter(
-      (i) =>
-        (i.status === "sent" || i.status === "joined") &&
-        i.invitedAt &&
-        new Date(i.invitedAt) >= startOfUtcDay,
-    ).length;
+    const shared = await getSharedEmailQuota();
 
     return NextResponse.json({
       success: true,
       batches,
       invites,
       quota: {
-        dailyLimit: INVITE_DAILY_LIMIT,
-        sentToday,
-        remainingToday: Math.max(0, INVITE_DAILY_LIMIT - sentToday),
+        dailyLimit: shared.dailyLimit,
+        sentToday: shared.sentToday,
+        remainingToday: shared.remainingToday,
         queuedTomorrowTotal: invites.filter((i) => i.status === "queued_tomorrow")
           .length,
+        istDate: shared.istDate,
+        quotaSource: "shared_transactional_email_logs",
       },
     });
   } catch (error) {
@@ -85,7 +82,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { collegeName, csvText, dailyLimit = INVITE_DAILY_LIMIT } = body;
+    const { collegeName, csvText, dailyLimit } = body;
 
     if (!csvText || typeof csvText !== "string") {
       return NextResponse.json({ error: "Missing CSV data" }, { status: 400 });
@@ -101,14 +98,23 @@ export async function POST(request: Request) {
     }
 
     const targetCollege = parsed.collegeNameDetected || collegeName || "Vishwa College";
+    const sharedBefore = await getSharedEmailQuota();
 
-    const { batch, sentCount, queuedCount, emailDelivered, emailFailed } =
-      await addAdminInviteBatch(
-        supabase,
-        targetCollege,
-        parsed.records,
-        Number(dailyLimit),
-      );
+    const {
+      batch,
+      sentCount,
+      queuedCount,
+      emailDelivered,
+      emailFailed,
+      sharedQuota,
+    } = await addAdminInviteBatch(
+      supabase,
+      targetCollege,
+      parsed.records,
+      typeof dailyLimit === "number" ? dailyLimit : sharedBefore.remainingToday,
+    );
+
+    await reconcileInvitesAlreadyRegistered(supabase);
 
     return NextResponse.json({
       success: true,
@@ -117,9 +123,19 @@ export async function POST(request: Request) {
       queuedCount,
       emailDelivered,
       emailFailed,
+      quota: {
+        dailyLimit: sharedQuota.dailyLimit,
+        sentToday: sharedQuota.sentToday + emailDelivered,
+        remainingToday: Math.max(
+          0,
+          sharedQuota.dailyLimit - (sharedQuota.sentToday + emailDelivered),
+        ),
+        istDate: sharedQuota.istDate,
+        quotaSource: "shared_transactional_email_logs",
+      },
       totalParsed: parsed.records.length,
       errors: parsed.errors,
-      message: `Batch created for ${targetCollege}: ${sentCount} invites marked for today (${emailDelivered} SMTP delivered, ${emailFailed} SMTP failed), ${queuedCount} queued.`,
+      message: `Batch created for ${targetCollege}: ${sentCount} attempted under shared org quota (${emailDelivered} SMTP delivered, ${emailFailed} failed/blocked), ${queuedCount} queued. Cap ${sharedQuota.dailyLimit}/day IST (EduBlast + EduDeca).`,
     });
   } catch (error) {
     console.error("[api/admin/invitations POST]", error);
@@ -149,12 +165,19 @@ export async function PATCH(request: Request) {
       const result = await dispatchQueuedInvites(
         supabase,
         typeof batchId === "string" ? batchId : undefined,
-        INVITE_DAILY_LIMIT,
       );
+      const shared = await getSharedEmailQuota();
       return NextResponse.json({
         success: true,
         ...result,
-        message: `Dispatched ${result.dispatched} queued invites (${result.emailDelivered} SMTP delivered, ${result.emailFailed} SMTP failed).`,
+        quota: {
+          dailyLimit: shared.dailyLimit,
+          sentToday: shared.sentToday,
+          remainingToday: shared.remainingToday,
+          istDate: shared.istDate,
+          quotaSource: "shared_transactional_email_logs",
+        },
+        message: `Dispatched ${result.dispatched} queued invites (${result.emailDelivered} SMTP delivered, ${result.emailFailed} SMTP failed). Shared cap ${shared.sentToday}/${shared.dailyLimit} today IST.`,
       });
     }
 
@@ -163,12 +186,20 @@ export async function PATCH(request: Request) {
         supabase,
         String(inviteId),
       );
+      const shared = await getSharedEmailQuota();
       return NextResponse.json({
         success: true,
         emailDelivered,
+        quota: {
+          dailyLimit: shared.dailyLimit,
+          sentToday: shared.sentToday,
+          remainingToday: shared.remainingToday,
+          istDate: shared.istDate,
+          quotaSource: "shared_transactional_email_logs",
+        },
         message: emailDelivered
           ? `Invitation email resent to ${invite?.email || inviteId}.`
-          : `Invite updated for ${invite?.email || inviteId}, but SMTP delivery failed or is not configured.`,
+          : `Invite updated for ${invite?.email || inviteId}, but SMTP delivery failed, was blocked by shared daily cap, or is not configured.`,
       });
     }
 

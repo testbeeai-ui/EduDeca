@@ -3,8 +3,10 @@ import { describe, it } from "node:test";
 
 import {
   countPlannedStatuses,
+  inviteStatusBadgeLabel,
   normalizeInviteEmail,
   planInviteStatuses,
+  resolveInviteStatusForRegistration,
 } from "./invite-dispatch";
 
 describe("normalizeInviteEmail", () => {
@@ -42,5 +44,28 @@ describe("countPlannedStatuses", () => {
       sentCount: 1,
       queuedCount: 3,
     });
+  });
+});
+
+describe("resolveInviteStatusForRegistration", () => {
+  it("marks already-registered EduDeca emails as joined (DONE)", () => {
+    assert.equal(resolveInviteStatusForRegistration("sent", true), "joined");
+    assert.equal(resolveInviteStatusForRegistration("queued_tomorrow", true), "joined");
+    assert.equal(resolveInviteStatusForRegistration("pending", true), "joined");
+  });
+
+  it("keeps invite status when email is not registered yet", () => {
+    assert.equal(resolveInviteStatusForRegistration("sent", false), "sent");
+    assert.equal(resolveInviteStatusForRegistration("joined", false), "joined");
+  });
+});
+
+describe("inviteStatusBadgeLabel", () => {
+  it("shows DONE for joined / already registered", () => {
+    assert.equal(inviteStatusBadgeLabel("joined"), "DONE");
+  });
+
+  it("keeps Email Sent for sent-only invites", () => {
+    assert.equal(inviteStatusBadgeLabel("sent"), "Email Sent");
   });
 });

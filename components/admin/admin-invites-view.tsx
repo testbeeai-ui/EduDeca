@@ -21,6 +21,7 @@ import {
 import type { CollegeInviteBatch, StudentInviteRecord, DailyQuotaStatus } from "@/lib/admin/invite-types";
 import { EDUDECA_PUBLIC_SIGNIN_URL, INVITE_DAILY_LIMIT } from "@/lib/admin/invite-types";
 import { parseStudentCsv } from "@/lib/admin/invite-csv";
+import { inviteStatusBadgeLabel } from "@/lib/admin/invite-dispatch";
 import { cn } from "@/lib/utils";
 import styles from "@/components/admin/admin-console.module.css";
 
@@ -59,7 +60,12 @@ export function AdminInvitesView() {
       if (res.ok && json.success) {
         setBatches(json.batches || []);
         setInvites(json.invites || []);
-        if (json.quota) setQuota(json.quota);
+        if (json.quota) {
+          setQuota(json.quota);
+          setDailyQuotaInput(
+            Math.max(0, Number(json.quota.remainingToday ?? json.quota.dailyLimit ?? 0)),
+          );
+        }
       }
     } catch (e) {
       console.error("Failed to load invites", e);
@@ -291,15 +297,17 @@ export function AdminInvitesView() {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-white">Daily Quota Limit</span>
+                <span className="text-xs font-bold text-white">
+                  Shared email quota (EduBlast + EduDeca)
+                </span>
                 <span className="rounded-full bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-[9px] font-extrabold text-amber-400">
-                  {quota.sentToday} / {quota.dailyLimit} Sent Today
+                  {quota.sentToday} / {quota.dailyLimit} today IST
                 </span>
               </div>
               <p className="mt-0.5 text-[11px] text-[#8a99a6]">
                 {quota.queuedTomorrowTotal > 0
-                  ? `⚠️ ${quota.queuedTomorrowTotal} student emails queued for tomorrow.`
-                  : `${quota.remainingToday} emails available in today's limit.`}
+                  ? `${quota.queuedTomorrowTotal} EduDeca invites queued. Same pool as EduBlast admin → Emails.`
+                  : `${quota.remainingToday} remaining. Counted from transactional_email_logs (not invite row status).`}
               </p>
             </div>
           </div>
@@ -330,11 +338,11 @@ export function AdminInvitesView() {
 
         <div className="rounded-2xl border border-[#212b36] bg-[#0e141b] p-4">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#5e6c78]">Joined (Converted)</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#5e6c78]">DONE (Registered)</span>
             <UserCheck className="size-4 text-[#22d3a6]" />
           </div>
           <div className="mt-2 font-display text-2xl font-bold text-[#22d3a6]">{stats.joined}</div>
-          <div className="mt-0.5 text-[11px] text-[#22d3a6] font-semibold">{stats.conversionPct}% Join Rate</div>
+          <div className="mt-0.5 text-[11px] text-[#22d3a6] font-semibold">{stats.conversionPct}% already on EduDeca</div>
         </div>
 
         <div className="rounded-2xl border border-[#212b36] bg-[#0e141b] p-4">
@@ -379,8 +387,8 @@ export function AdminInvitesView() {
               className="rounded-lg border border-[#212b36] bg-[#141c25] px-2.5 py-1 text-xs font-bold text-white focus:outline-none cursor-pointer"
             >
               <option value="all">All Statuses</option>
-              <option value="joined">🟢 Joined (Converted)</option>
-              <option value="sent">🔵 Sent</option>
+              <option value="joined">🟢 DONE (Registered)</option>
+              <option value="sent">🔵 Email Sent</option>
               <option value="queued_tomorrow">🟠 Queued for Tomorrow</option>
             </select>
           </div>
@@ -458,18 +466,21 @@ export function AdminInvitesView() {
                       </td>
                       <td className="px-5 py-3.5">
                         {isJoined && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-[11px] font-bold text-emerald-400">
-                            <CheckCircle2 className="size-3" /> Joined (Converted)
+                          <span
+                            className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-[11px] font-bold text-emerald-400"
+                            title={inv.notes || "Already registered on EduDeca"}
+                          >
+                            <CheckCircle2 className="size-3" /> {inviteStatusBadgeLabel("joined")}
                           </span>
                         )}
                         {isSent && (
                           <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/15 border border-blue-500/30 px-2.5 py-0.5 text-[11px] font-bold text-blue-400">
-                            <Send className="size-3" /> Email Sent
+                            <Send className="size-3" /> {inviteStatusBadgeLabel("sent")}
                           </span>
                         )}
                         {isQueued && (
                           <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 text-[11px] font-bold text-amber-400" title={inv.notes || ""}>
-                            <Clock className="size-3" /> Queued for Tomorrow
+                            <Clock className="size-3" /> {inviteStatusBadgeLabel("queued_tomorrow")}
                           </span>
                         )}
                       </td>
@@ -569,18 +580,26 @@ export function AdminInvitesView() {
                 />
               </div>
 
-              {/* Daily Quota Setting */}
+              {/* Batch send budget (clamped by shared remaining) */}
               <div>
                 <label className="block text-xs font-bold text-white mb-1">
-                  Daily Sending Quota Limit for this Batch
+                  Max sends from this batch (capped by shared remaining: {quota.remainingToday})
                 </label>
                 <input
                   type="number"
+                  min={0}
+                  max={quota.remainingToday}
                   value={dailyQuotaInput}
-                  onChange={(e) => setDailyQuotaInput(Number(e.target.value))}
+                  onChange={(e) =>
+                    setDailyQuotaInput(
+                      Math.min(quota.remainingToday, Math.max(0, Number(e.target.value))),
+                    )
+                  }
                   className="w-32 rounded-xl border border-[#212b36] bg-[#141c25] px-3.5 py-2 text-xs font-bold text-white focus:border-[#22d3a6] focus:outline-none"
                 />
-                <span className="ml-2 text-[11px] text-[#8a99a6]">Emails over this limit will queue for tomorrow</span>
+                <span className="ml-2 text-[11px] text-[#8a99a6]">
+                  Uses EduBlast+EduDeca shared 500/day IST cap — overage queues for tomorrow
+                </span>
               </div>
 
               {/* Parse Preview Table */}
