@@ -111,6 +111,17 @@ export async function GET(request: NextRequest) {
   const userId = exchanged.session?.user?.id;
   if (userId) {
     try {
+      // Case A: college invite email → Google sign-in marks invitation joined.
+      const { error: inviteSyncErr } = await supabase.rpc(
+        "edudeca_sync_invite_conversion",
+      );
+      if (inviteSyncErr) {
+        console.warn(
+          "[auth/callback] invite conversion sync skipped",
+          inviteSyncErr.message,
+        );
+      }
+
       // Use the exchange client (session cookies just set) — not a fresh createSupabaseServer().
       const app = await getCollegeApplicationForUser(userId, supabase);
       if (app?.status === "approved") {

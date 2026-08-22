@@ -12,7 +12,10 @@ import type {
 } from "@/lib/college/registry-store";
 import { useAppStore } from "@/store/useAppStore";
 
+import { AdminInvitesView } from "@/components/admin/admin-invites-view";
+
 type Filter = "pending" | "approved" | "all";
+type AdminTab = "verifications" | "invites";
 
 function formatWhen(iso: string): string {
   try {
@@ -58,6 +61,7 @@ export function AdminConsole() {
   const isAdmin = isTesterInvestorEmail(email);
 
   const [apps, setApps] = useState<CollegeApplicationAdminView[]>([]);
+  const [activeTab, setActiveTab] = useState<AdminTab>("verifications");
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>("pending");
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -196,9 +200,22 @@ export function AdminConsole() {
         </div>
 
         <nav className={styles.nav} aria-label="Admin">
-          <Link href="/admin" className={`${styles.navItem} ${styles.navItemActive}`}>
+          <button
+            type="button"
+            onClick={() => setActiveTab("verifications")}
+            className={`${styles.navItem} ${activeTab === "verifications" ? styles.navItemActive : ""}`}
+            style={{ width: "100%", textAlign: "left", cursor: "pointer", background: "none", border: "none" }}
+          >
             College verifications
-          </Link>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("invites")}
+            className={`${styles.navItem} ${activeTab === "invites" ? styles.navItemActive : ""}`}
+            style={{ width: "100%", textAlign: "left", cursor: "pointer", background: "none", border: "none" }}
+          >
+            Email invitations &amp; tracking
+          </button>
         </nav>
 
         <div className={styles.sidebarFoot}>
@@ -213,20 +230,26 @@ export function AdminConsole() {
       </aside>
 
       <div className={styles.main}>
-        <header className={styles.topbar}>
-          <div>
-            <h1 className={styles.pageTitle}>College verifications</h1>
-            <p className={styles.pageSub}>
-              Open an application to review every registration field and student data, then
-              verify portal access.
-            </p>
+        {activeTab === "invites" ? (
+          <div className={styles.content} style={{ padding: 24 }}>
+            <AdminInvitesView />
           </div>
-          <button type="button" className={styles.ghostBtn} onClick={() => void load()}>
-            Refresh
-          </button>
-        </header>
+        ) : (
+          <>
+            <header className={styles.topbar}>
+              <div>
+                <h1 className={styles.pageTitle}>College verifications</h1>
+                <p className={styles.pageSub}>
+                  Open an application to review every registration field and student data, then
+                  verify portal access.
+                </p>
+              </div>
+              <button type="button" className={styles.ghostBtn} onClick={() => void load()}>
+                Refresh
+              </button>
+            </header>
 
-        <div className={styles.content}>
+            <div className={styles.content}>
           <div className={styles.statRow}>
             <div className={styles.statCard}>
               <div className={styles.statLabel}>Pending</div>
@@ -545,6 +568,8 @@ export function AdminConsole() {
             </p>
           ) : null}
         </div>
+          </>
+        )}
       </div>
     </div>
   );
