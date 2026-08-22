@@ -27,13 +27,22 @@ export interface CollegeInviteBatch {
 }
 
 export interface DailyQuotaStatus {
+  /** Shared org SMTP cap (EduBlast + EduDeca), IST day. */
   dailyLimit: number;
+  /** Successful sends logged in transactional_email_logs today (IST). */
   sentToday: number;
   remainingToday: number;
   queuedTomorrowTotal: number;
+  /** Asia/Kolkata calendar date for the counters. */
+  istDate?: string;
+  /** Source label for the admin UI. */
+  quotaSource?: "shared_transactional_email_logs";
 }
 
-/** Default daily SMTP dispatch cap for college invite batches. */
-export const INVITE_DAILY_LIMIT = 100;
+/**
+ * @deprecated Use getEmailDailySendCap() / getSharedEmailQuota() — org-wide 500 IST cap.
+ * Kept only as a soft UI default clamp, never as a separate pool.
+ */
+export const INVITE_DAILY_LIMIT = 500;
 
-export const EDUDECA_PUBLIC_SIGNIN_URL = "https://edudeca.com/signin";
+export const EDUDECA_PUBLIC_SIGNIN_URL = "https://edu-deca.vercel.app/signin";

@@ -46,7 +46,7 @@ export function generateCollegeInviteEmailHtml(data: {
     <div class="footer">
       EduDeca National Academic Decathlon · Powered by EduBlast<br>
       This email was sent to you because ${data.collegeName} nominated you for the decathlon.
-      Sign in with Google at edudeca.com — no password invite link.
+      Sign in with Google at edu-deca.vercel.app — no password invite link.
     </div>
   </div>
 </body>
