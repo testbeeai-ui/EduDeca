@@ -2,6 +2,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { normalizeInstitutionName } from "@/lib/college/normalize-institution";
 import type { CollegeRegistrationDraft } from "@/lib/college/registration";
+import {
+  buildVerificationDecision,
+  type VerificationAction,
+} from "@/lib/college/verification-decision";
 import { createSupabaseServer } from "@/lib/supabase/server";
 
 export type CollegeApplicationStatus = "pending" | "approved" | "rejected";
@@ -13,6 +17,9 @@ export type CollegeApplication = {
   status: CollegeApplicationStatus;
   submittedAt: string;
   verifiedAt: string | null;
+  rejectedAt: string | null;
+  adminFeedback: string | null;
+  adminFeedbackAt: string | null;
   institutionName: string;
   state: string;
   city: string;
@@ -56,6 +63,9 @@ type ApplicationRow = {
   status: string;
   submitted_at: string;
   verified_at: string | null;
+  rejected_at: string | null;
+  admin_feedback: string | null;
+  admin_feedback_at: string | null;
   institution_name: string;
   institution_key: string;
   state: string;
@@ -102,6 +112,9 @@ function rowToApplication(row: ApplicationRow): CollegeApplication {
     status: asStatus(row.status),
     submittedAt: row.submitted_at,
     verifiedAt: row.verified_at,
+    rejectedAt: row.rejected_at ?? null,
+    adminFeedback: row.admin_feedback ?? null,
+    adminFeedbackAt: row.admin_feedback_at ?? null,
     institutionName: row.institution_name,
     state: row.state ?? "",
     city: row.city ?? "",
@@ -321,19 +334,44 @@ export async function listAllCollegeApplicationsForAdmin(): Promise<
 
 export async function verifyCollegeApplication(
   applicationId: string,
+  comment?: string | null,
 ): Promise<CollegeApplication | null> {
+  return decideCollegeApplication(applicationId, "approve", comment);
+}
+
+export async function decideCollegeApplication(
+  applicationId: string,
+  action: VerificationAction,
+  comment?: string | null,
+): Promise<CollegeApplication | null> {
+  let decision;
+  try {
+    decision = buildVerificationDecision({ action, comment });
+  } catch (e) {
+    console.error("[college] invalid verification decision", e);
+    return null;
+  }
+
+  const patch: Record<string, unknown> = {};
+  if (decision.status !== undefined) patch.status = decision.status;
+  if (decision.verifiedAt !== undefined) patch.verified_at = decision.verifiedAt;
+  if (decision.rejectedAt !== undefined) patch.rejected_at = decision.rejectedAt;
+  if (decision.adminFeedback !== undefined) {
+    patch.admin_feedback = decision.adminFeedback;
+  }
+  if (decision.adminFeedbackAt !== undefined) {
+    patch.admin_feedback_at = decision.adminFeedbackAt;
+  }
+
   const supabase = await createSupabaseServer();
   const { data, error } = await supabase
     .from("edudeca_college_applications")
-    .update({
-      status: "approved",
-      verified_at: new Date().toISOString(),
-    })
+    .update(patch)
     .eq("id", applicationId)
     .select("*")
     .maybeSingle();
   if (error) {
-    console.error("[college] verify", error);
+    console.error("[college] decide", action, error);
     return null;
   }
   return data ? rowToApplication(data as ApplicationRow) : null;

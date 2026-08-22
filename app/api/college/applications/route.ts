@@ -3,12 +3,13 @@ import { NextResponse } from "next/server";
 import { isTesterInvestorEmail } from "@/lib/admin/tester-allowlist";
 import {
   attachCollegeUploadPaths,
+  decideCollegeApplication,
   getCollegeApplicationForUser,
   listAllCollegeApplicationsForAdmin,
   listPendingCollegeApplications,
   upsertCollegeApplication,
-  verifyCollegeApplication,
 } from "@/lib/college/registry-store";
+import type { VerificationAction } from "@/lib/college/verification-decision";
 import {
   emptyCollegeRegistrationDraft,
   type CollegeRegistrationDraft,
@@ -201,20 +202,51 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  let body: { applicationId?: string; action?: string };
+  let body: { applicationId?: string; action?: string; comment?: string };
   try {
-    body = (await request.json()) as { applicationId?: string; action?: string };
+    body = (await request.json()) as {
+      applicationId?: string;
+      action?: string;
+      comment?: string;
+    };
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  if (body.action !== "verify" || !body.applicationId?.trim()) {
-    return NextResponse.json({ error: "Invalid verify payload" }, { status: 400 });
+  if (!body.applicationId?.trim() || !body.action) {
+    return NextResponse.json({ error: "Invalid verification payload" }, { status: 400 });
   }
 
-  const application = await verifyCollegeApplication(body.applicationId.trim());
+  const rawAction = body.action.trim().toLowerCase();
+  let action: VerificationAction;
+  if (rawAction === "verify" || rawAction === "approve") {
+    action = "approve";
+  } else if (rawAction === "reject") {
+    action = "reject";
+  } else if (rawAction === "comment") {
+    action = "comment";
+  } else {
+    return NextResponse.json(
+      { error: "action must be approve, reject, or comment" },
+      { status: 400 },
+    );
+  }
+
+  const application = await decideCollegeApplication(
+    body.applicationId.trim(),
+    action,
+    body.comment,
+  );
   if (!application) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.json(
+      {
+        error:
+          action === "comment"
+            ? "Comment text is required"
+            : "Not found or update failed",
+      },
+      { status: action === "comment" ? 400 : 404 },
+    );
   }
 
   return NextResponse.json({ application });

@@ -372,6 +372,59 @@
   cursor: not-allowed;
 }
 
+.rejectBtn {
+  font-size: 12.5px;
+  font-weight: 750;
+  color: #fff;
+  background: #c44b3c;
+  border: none;
+  border-radius: 10px;
+  padding: 9px 14px;
+  cursor: pointer;
+  min-height: 40px;
+}
+
+.rejectBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.feedbackBox {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.feedbackInput {
+  width: 100%;
+  resize: vertical;
+  min-height: 72px;
+  border-radius: 10px;
+  border: 1px solid var(--ad-border);
+  background: var(--ad-panel2);
+  color: var(--ad-text);
+  font-size: 13px;
+  padding: 10px 12px;
+  font-family: inherit;
+}
+
+.feedbackExisting {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(232, 107, 90, 0.25);
+  background: rgba(232, 107, 90, 0.08);
+}
+
+.feedbackBody {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ad-text);
+  white-space: pre-wrap;
+}
+
 .ghostBtn {
   font-size: 12.5px;
   font-weight: 700;
@@ -557,7 +610,18 @@
 }
 
 .detailActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
   margin-top: 22px;
   padding-top: 16px;
   border-top: 1px solid var(--ad-border);
+}
+
+.fieldLabel {
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ad-dim);
 }

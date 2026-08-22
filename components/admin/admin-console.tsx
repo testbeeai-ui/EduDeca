@@ -14,7 +14,7 @@ import { useAppStore } from "@/store/useAppStore";
 
 import { AdminInvitesView } from "@/components/admin/admin-invites-view";
 
-type Filter = "pending" | "approved" | "all";
+type Filter = "pending" | "approved" | "rejected" | "all";
 type AdminTab = "verifications" | "invites";
 
 function formatWhen(iso: string): string {
@@ -65,6 +65,7 @@ export function AdminConsole() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>("pending");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [feedbackDraft, setFeedbackDraft] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -89,6 +90,9 @@ export function AdminConsole() {
             xiiFileName: a.xiiFileName ?? null,
             xiStoredRelPath: a.xiStoredRelPath ?? null,
             xiiStoredRelPath: a.xiiStoredRelPath ?? null,
+            rejectedAt: a.rejectedAt ?? null,
+            adminFeedback: a.adminFeedback ?? null,
+            adminFeedbackAt: a.adminFeedbackAt ?? null,
             roster: Array.isArray(a.roster) ? a.roster : [],
           })),
         );
@@ -100,6 +104,9 @@ export function AdminConsole() {
             xiiFileName: a.xiiFileName ?? null,
             xiStoredRelPath: a.xiStoredRelPath ?? null,
             xiiStoredRelPath: a.xiiStoredRelPath ?? null,
+            rejectedAt: a.rejectedAt ?? null,
+            adminFeedback: a.adminFeedback ?? null,
+            adminFeedbackAt: a.adminFeedbackAt ?? null,
             roster: Array.isArray(a.roster) ? a.roster : [],
           })),
         );
@@ -126,7 +133,8 @@ export function AdminConsole() {
   const counts = useMemo(() => {
     const pending = apps.filter((a) => a.status === "pending").length;
     const approved = apps.filter((a) => a.status === "approved").length;
-    return { pending, approved, total: apps.length };
+    const rejected = apps.filter((a) => a.status === "rejected").length;
+    return { pending, approved, rejected, total: apps.length };
   }, [apps]);
 
   const rows = useMemo(() => {
@@ -139,7 +147,15 @@ export function AdminConsole() {
     [apps, selectedId],
   );
 
-  const verify = async (id: string, name: string) => {
+  useEffect(() => {
+    setFeedbackDraft(selected?.adminFeedback ?? "");
+  }, [selected?.id, selected?.adminFeedback]);
+
+  const decide = async (
+    id: string,
+    name: string,
+    action: "approve" | "reject" | "comment",
+  ) => {
     setBusyId(id);
     setMessage(null);
     try {
@@ -147,16 +163,27 @@ export function AdminConsole() {
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "verify", applicationId: id }),
+        body: JSON.stringify({
+          action,
+          applicationId: id,
+          comment: feedbackDraft,
+        }),
       });
+      const json = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
-        setMessage("Verification failed. Try again.");
+        setMessage(json.error || "Action failed. Try again.");
         return;
       }
-      setMessage(`${name} is verified. They can open the college portal now.`);
+      if (action === "approve") {
+        setMessage(`${name} is verified. They can open the college portal now.`);
+      } else if (action === "reject") {
+        setMessage(`${name} was rejected. Feedback is visible on their pending page.`);
+      } else {
+        setMessage(`Comment sent to ${name}.`);
+      }
       await load();
     } catch {
-      setMessage("Verification failed. Try again.");
+      setMessage("Action failed. Try again.");
     } finally {
       setBusyId(null);
     }
@@ -260,6 +287,10 @@ export function AdminConsole() {
               <div className={styles.statValue}>{counts.approved}</div>
             </div>
             <div className={styles.statCard}>
+              <div className={styles.statLabel}>Rejected</div>
+              <div className={styles.statValue}>{counts.rejected}</div>
+            </div>
+            <div className={styles.statCard}>
               <div className={styles.statLabel}>Total applications</div>
               <div className={styles.statValue}>{counts.total}</div>
             </div>
@@ -273,6 +304,7 @@ export function AdminConsole() {
                   [
                     ["pending", "Pending"],
                     ["approved", "Verified"],
+                    ["rejected", "Rejected"],
                     ["all", "All"],
                   ] as const
                 ).map(([id, label]) => (
@@ -370,7 +402,7 @@ export function AdminConsole() {
                               >
                                 {isOpen ? "Hide details" : "View details"}
                               </button>
-                              {row.status === "pending" ? (
+                              {row.status === "pending" || row.status === "rejected" ? (
                                 <button
                                   type="button"
                                   className={styles.verifyBtn}
@@ -378,10 +410,10 @@ export function AdminConsole() {
                                   aria-label={`Verify ${row.institutionName}`}
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    void verify(row.id, row.institutionName);
+                                    void decide(row.id, row.institutionName, "approve");
                                   }}
                                 >
-                                  {busyId === row.id ? "Verifying…" : "Verify"}
+                                  {busyId === row.id ? "Working…" : "Verify"}
                                 </button>
                               ) : null}
                             </div>
@@ -546,18 +578,64 @@ export function AdminConsole() {
                   </div>
                 )}
 
-                {selected.status === "pending" ? (
-                  <div className={styles.detailActions}>
-                    <button
-                      type="button"
-                      className={styles.verifyBtn}
-                      disabled={busyId === selected.id}
-                      onClick={() => void verify(selected.id, selected.institutionName)}
-                    >
-                      {busyId === selected.id ? "Verifying…" : "Verify this college"}
-                    </button>
+                {selected.adminFeedback ? (
+                  <div className={styles.feedbackExisting}>
+                    <div className={styles.fieldLabel}>Current feedback to college</div>
+                    <p className={styles.feedbackBody}>{selected.adminFeedback}</p>
+                    {selected.adminFeedbackAt ? (
+                      <div className={styles.instMeta}>
+                        Sent {formatWhen(selected.adminFeedbackAt)}
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
+
+                <div className={styles.feedbackBox}>
+                  <label className={styles.fieldLabel} htmlFor="admin-feedback">
+                    Message to college (optional for verify/reject; required to send comment)
+                  </label>
+                  <textarea
+                    id="admin-feedback"
+                    className={styles.feedbackInput}
+                    rows={3}
+                    placeholder='e.g. "This is not the right way — please re-upload the Class XI roster as CSV."'
+                    value={feedbackDraft}
+                    onChange={(e) => setFeedbackDraft(e.target.value)}
+                  />
+                </div>
+
+                <div className={styles.detailActions}>
+                  <button
+                    type="button"
+                    className={styles.verifyBtn}
+                    disabled={busyId === selected.id}
+                    onClick={() =>
+                      void decide(selected.id, selected.institutionName, "approve")
+                    }
+                  >
+                    {busyId === selected.id ? "Working…" : "Verify / approve"}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.rejectBtn}
+                    disabled={busyId === selected.id}
+                    onClick={() =>
+                      void decide(selected.id, selected.institutionName, "reject")
+                    }
+                  >
+                    Reject
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.ghostBtn}
+                    disabled={busyId === selected.id || !feedbackDraft.trim()}
+                    onClick={() =>
+                      void decide(selected.id, selected.institutionName, "comment")
+                    }
+                  >
+                    Send comment only
+                  </button>
+                </div>
               </div>
             </section>
           ) : null}
