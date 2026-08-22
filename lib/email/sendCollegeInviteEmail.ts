@@ -5,11 +5,12 @@ import {
   isInviteEmailConfigured,
   sendTransactionalEmail,
 } from "@/lib/email/sendTransactionalEmail";
+import { EDUDECA_PUBLIC_SIGNIN_URL } from "@/lib/admin/invite-types";
 
 function resolveJoinUrl(): string {
   const fromEnv = process.env.NEXT_PUBLIC_EDUDECA_APP_URL?.trim();
   if (fromEnv) return `${fromEnv.replace(/\/$/, "")}/signin`;
-  return "https://edudeca.com/signin";
+  return EDUDECA_PUBLIC_SIGNIN_URL;
 }
 
 /**

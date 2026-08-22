@@ -18,8 +18,9 @@ import {
   Check,
   FileSpreadsheet,
 } from "lucide-react";
-import type { CollegeInviteBatch, StudentInviteRecord, DailyQuotaStatus } from "@/lib/admin/invitations";
-import { parseStudentCsv } from "@/lib/admin/invitations";
+import type { CollegeInviteBatch, StudentInviteRecord, DailyQuotaStatus } from "@/lib/admin/invite-types";
+import { EDUDECA_PUBLIC_SIGNIN_URL, INVITE_DAILY_LIMIT } from "@/lib/admin/invite-types";
+import { parseStudentCsv } from "@/lib/admin/invite-csv";
 import { cn } from "@/lib/utils";
 import styles from "@/components/admin/admin-console.module.css";
 
@@ -27,7 +28,7 @@ export function AdminInvitesView() {
   const [batches, setBatches] = useState<CollegeInviteBatch[]>([]);
   const [invites, setInvites] = useState<StudentInviteRecord[]>([]);
   const [quota, setQuota] = useState<DailyQuotaStatus>({
-    dailyLimit: 100,
+    dailyLimit: INVITE_DAILY_LIMIT,
     sentToday: 0,
     remainingToday: 100,
     queuedTomorrowTotal: 0,
@@ -43,7 +44,7 @@ export function AdminInvitesView() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [modalCollegeName, setModalCollegeName] = useState("Vishwa College");
   const [csvRawText, setCsvRawText] = useState("");
-  const [dailyQuotaInput, setDailyQuotaInput] = useState<number>(100);
+  const [dailyQuotaInput, setDailyQuotaInput] = useState<number>(INVITE_DAILY_LIMIT);
   const [dispatching, setDispatching] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -205,7 +206,7 @@ export function AdminInvitesView() {
   };
 
   const copyJoinLink = (email: string, id: string) => {
-    const link = `${window.location.origin}/signin?email=${encodeURIComponent(email)}`;
+    const link = `${EDUDECA_PUBLIC_SIGNIN_URL}?email=${encodeURIComponent(email)}`;
     navigator.clipboard.writeText(link);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);

@@ -5,171 +5,36 @@ import {
   normalizeInviteEmail,
   planInviteStatuses,
 } from "@/lib/admin/invite-dispatch";
+import {
+  INVITE_DAILY_LIMIT,
+  type CollegeInviteBatch,
+  type StudentInviteRecord,
+  type StudentInviteStatus,
+} from "@/lib/admin/invite-types";
 import { sendCollegeStudentInviteEmail } from "@/lib/email/sendCollegeInviteEmail";
 
-export type StudentInviteStatus = "joined" | "sent" | "queued_tomorrow" | "pending";
-
-export interface StudentInviteRecord {
-  id: string;
-  batchId: string;
-  collegeName: string;
-  email: string;
-  name: string | null;
-  studentCode: string | null;
-  classLevel: 11 | 12 | null;
-  status: StudentInviteStatus;
-  invitedAt: string | null;
-  joinedAt: string | null;
-  notes?: string | null;
-}
-
-export interface CollegeInviteBatch {
-  id: string;
-  collegeName: string;
-  totalCount: number;
-  sentCount: number;
-  queuedCount: number;
-  joinedCount: number;
-  uploadedAt: string;
-  xiCount: number;
-  xiiCount: number;
-}
-
-export interface DailyQuotaStatus {
-  dailyLimit: number;
-  sentToday: number;
-  remainingToday: number;
-  queuedTomorrowTotal: number;
-}
-
+export type {
+  CollegeInviteBatch,
+  DailyQuotaStatus,
+  StudentInviteRecord,
+  StudentInviteStatus,
+} from "@/lib/admin/invite-types";
+export { INVITE_DAILY_LIMIT, EDUDECA_PUBLIC_SIGNIN_URL } from "@/lib/admin/invite-types";
+export { parseStudentCsv } from "@/lib/admin/invite-csv";
 export { generateCollegeInviteEmailHtml } from "@/lib/email/collegeInviteEmailTemplate";
 
-/** Flexible CSV / text parser that handles real-world variations in header names. */
-export function parseStudentCsv(
-  csvText: string,
-  defaultCollegeName = "Vishwa College",
-): {
-  records: Omit<StudentInviteRecord, "id" | "batchId" | "status" | "invitedAt" | "joinedAt">[];
-  collegeNameDetected: string;
-  xiCount: number;
-  xiiCount: number;
-  errors: string[];
-} {
-  const lines = csvText
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter((l) => l.length > 0);
-
-  if (lines.length === 0) {
-    return {
-      records: [],
-      collegeNameDetected: defaultCollegeName,
-      xiCount: 0,
-      xiiCount: 0,
-      errors: ["CSV file is empty"],
-    };
-  }
-
-  const firstLine = lines[0];
-  const delimiter = firstLine.includes("\t")
-    ? "\t"
-    : firstLine.includes(";")
-      ? ";"
-      : ",";
-
-  const splitRow = (row: string) =>
-    row.split(delimiter).map((c) => c.trim().replace(/^["']|["']$/g, ""));
-
-  const headers = splitRow(lines[0]).map((h) => h.toLowerCase());
-
-  let emailIdx = headers.findIndex((h) =>
-    /email|e-mail|mail|email_address|mail_id/.test(h),
-  );
-  let nameIdx = headers.findIndex((h) =>
-    /name|student_name|full_name|candidate_name/.test(h),
-  );
-  let codeIdx = headers.findIndex((h) =>
-    /id|student_id|code|student_code|roll|reg|usn|admission/.test(h),
-  );
-  let classIdx = headers.findIndex((h) =>
-    /class|grade|level|standard|std|class_level/.test(h),
-  );
-  let collegeIdx = headers.findIndex((h) =>
-    /college|institution|school|college_name/.test(h),
-  );
-
-  const hasHeaderRow =
-    emailIdx !== -1 || nameIdx !== -1 || codeIdx !== -1 || classIdx !== -1;
-  const startRow = hasHeaderRow ? 1 : 0;
-
-  if (!hasHeaderRow) {
-    emailIdx = 0;
-    nameIdx = 1;
-    codeIdx = 2;
-    classIdx = 3;
-  }
-
-  const records: Omit<
-    StudentInviteRecord,
-    "id" | "batchId" | "status" | "invitedAt" | "joinedAt"
-  >[] = [];
-  let detectedCollege = defaultCollegeName;
-  let xiCount = 0;
-  let xiiCount = 0;
-  const errors: string[] = [];
-
-  for (let i = startRow; i < lines.length; i++) {
-    const cols = splitRow(lines[i]);
-    if (cols.length === 0 || cols.every((c) => c === "")) continue;
-
-    let email = (cols[emailIdx] || "").trim();
-    if (!email.includes("@")) {
-      const foundEmail = cols.find((c) => c.includes("@") && c.includes("."));
-      if (foundEmail) email = foundEmail.trim();
-    }
-
-    if (!email || !email.includes("@")) {
-      errors.push(`Row ${i + 1}: Skipping invalid or missing email (${cols.join(", ")})`);
-      continue;
-    }
-
-    const name =
-      nameIdx !== -1 && cols[nameIdx] ? cols[nameIdx].trim() : email.split("@")[0];
-    const studentCode =
-      codeIdx !== -1 && cols[codeIdx] ? cols[codeIdx].trim() : null;
-
-    let classLevel: 11 | 12 | null = null;
-    if (classIdx !== -1 && cols[classIdx]) {
-      const rawClass = cols[classIdx].toLowerCase();
-      if (rawClass.includes("11") || rawClass.includes("xi")) {
-        classLevel = 11;
-        xiCount++;
-      } else if (rawClass.includes("12") || rawClass.includes("xii")) {
-        classLevel = 12;
-        xiiCount++;
-      }
-    }
-
-    if (collegeIdx !== -1 && cols[collegeIdx] && cols[collegeIdx].trim()) {
-      detectedCollege = cols[collegeIdx].trim();
-    }
-
-    records.push({
-      collegeName: detectedCollege,
-      email: normalizeInviteEmail(email),
-      name,
-      studentCode,
-      classLevel,
-    });
-  }
-
-  return {
-    records,
-    collegeNameDetected: detectedCollege,
-    xiCount,
-    xiiCount,
-    errors,
-  };
+async function deliverInviteMail(invite: {
+  email: string;
+  name: string | null;
+  collegeName: string;
+  studentCode: string | null;
+}): Promise<boolean> {
+  return sendCollegeStudentInviteEmail({
+    email: invite.email,
+    name: invite.name || invite.email.split("@")[0],
+    collegeName: invite.collegeName,
+    studentCode: invite.studentCode,
+  });
 }
 
 function mapBatchRow(b: Record<string, unknown>): CollegeInviteBatch {
@@ -239,8 +104,14 @@ export async function addAdminInviteBatch(
     StudentInviteRecord,
     "id" | "batchId" | "status" | "invitedAt" | "joinedAt"
   >[],
-  dailyLimit = 100,
-): Promise<{ batch: CollegeInviteBatch; sentCount: number; queuedCount: number }> {
+  dailyLimit = INVITE_DAILY_LIMIT,
+): Promise<{
+  batch: CollegeInviteBatch;
+  sentCount: number;
+  queuedCount: number;
+  emailDelivered: number;
+  emailFailed: number;
+}> {
   const batchId = `batch-${Date.now()}`;
   const nowIso = new Date().toISOString();
 
@@ -323,26 +194,27 @@ export async function addAdminInviteBatch(
     throw new Error(`Failed to save student invitations: ${inviteErr.message}`);
   }
 
-  // Branded SMTP mail only — never inviteUserByEmail / OTP (Google Auth only).
+  let emailDelivered = 0;
+  let emailFailed = 0;
+
+  // Branded SMTP only — never inviteUserByEmail / OTP (Google Auth only).
   for (const rec of newRecords) {
     if (rec.status !== "sent") continue;
-    const delivered = await sendCollegeStudentInviteEmail({
-      email: rec.email,
-      name: rec.name || rec.email.split("@")[0],
-      collegeName: rec.collegeName,
-      studentCode: rec.studentCode,
-    });
-    if (!delivered) {
-      await supabase
-        .from("edudeca_student_invitations")
-        .update({
-          notes: "Invite row saved; email delivery failed or SMTP not configured.",
-        })
-        .eq("id", rec.id);
+    const delivered = await deliverInviteMail(rec);
+    if (delivered) {
+      emailDelivered++;
+      continue;
     }
+    emailFailed++;
+    await supabase
+      .from("edudeca_student_invitations")
+      .update({
+        notes: "Invite saved in DB; SMTP delivery failed or not configured.",
+      })
+      .eq("id", rec.id);
   }
 
-  return { batch, sentCount, queuedCount };
+  return { batch, sentCount, queuedCount, emailDelivered, emailFailed };
 }
 
 /** Mark invites joined for the signed-in JWT email (SECURITY DEFINER RPC). */
@@ -360,8 +232,8 @@ export async function checkAndSyncStudentConversion(
 export async function dispatchQueuedInvites(
   supabase: SupabaseClient,
   batchId?: string,
-  dailyLimit = 100,
-): Promise<number> {
+  dailyLimit = INVITE_DAILY_LIMIT,
+): Promise<{ dispatched: number; emailDelivered: number; emailFailed: number }> {
   let query = supabase
     .from("edudeca_student_invitations")
     .select("*")
@@ -376,19 +248,18 @@ export async function dispatchQueuedInvites(
   const { data, error } = await query;
   if (error) throw new Error(`Failed to load queued invites: ${error.message}`);
   const rows = data ?? [];
-  if (rows.length === 0) return 0;
+  if (rows.length === 0) {
+    return { dispatched: 0, emailDelivered: 0, emailFailed: 0 };
+  }
 
   const nowIso = new Date().toISOString();
-  let count = 0;
+  let dispatched = 0;
+  let emailDelivered = 0;
+  let emailFailed = 0;
 
   for (const row of rows) {
     const invite = mapInviteRow(row as Record<string, unknown>);
-    const delivered = await sendCollegeStudentInviteEmail({
-      email: invite.email,
-      name: invite.name || invite.email.split("@")[0],
-      collegeName: invite.collegeName,
-      studentCode: invite.studentCode,
-    });
+    const delivered = await deliverInviteMail(invite);
 
     const { error: upErr } = await supabase
       .from("edudeca_student_invitations")
@@ -397,42 +268,39 @@ export async function dispatchQueuedInvites(
         invited_at: nowIso,
         notes: delivered
           ? "Dispatched via admin daily quota release."
-          : "Dispatched status set; email delivery failed or SMTP not configured.",
+          : "Marked sent in DB; SMTP delivery failed or not configured.",
       })
       .eq("id", invite.id);
     if (upErr) {
       console.error("[invitations] dispatch update failed", upErr.message);
       continue;
     }
-    count++;
+    dispatched++;
+    if (delivered) emailDelivered++;
+    else emailFailed++;
   }
 
   const batchIds = [...new Set(rows.map((r) => String(r.batch_id)))];
   for (const id of batchIds) {
     await refreshBatchCounts(supabase, id);
   }
-  return count;
+  return { dispatched, emailDelivered, emailFailed };
 }
 
 export async function resendSingleInvite(
   supabase: SupabaseClient,
   inviteId: string,
-): Promise<StudentInviteRecord | null> {
+): Promise<{ invite: StudentInviteRecord | null; emailDelivered: boolean }> {
   const { data, error } = await supabase
     .from("edudeca_student_invitations")
     .select("*")
     .eq("id", inviteId)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  if (!data) return null;
+  if (!data) return { invite: null, emailDelivered: false };
 
   const invite = mapInviteRow(data as Record<string, unknown>);
-  const delivered = await sendCollegeStudentInviteEmail({
-    email: invite.email,
-    name: invite.name || invite.email.split("@")[0],
-    collegeName: invite.collegeName,
-    studentCode: invite.studentCode,
-  });
+  const delivered = await deliverInviteMail(invite);
 
   const nowIso = new Date().toISOString();
   const { data: updated, error: upErr } = await supabase
@@ -442,7 +310,7 @@ export async function resendSingleInvite(
       invited_at: nowIso,
       notes: delivered
         ? "Resent invite email."
-        : "Resend attempted; email delivery failed or SMTP not configured.",
+        : "Resend attempted; SMTP delivery failed or not configured.",
     })
     .eq("id", inviteId)
     .select("*")
@@ -450,7 +318,10 @@ export async function resendSingleInvite(
 
   if (upErr) throw new Error(upErr.message);
   if (updated) await refreshBatchCounts(supabase, invite.batchId);
-  return updated ? mapInviteRow(updated as Record<string, unknown>) : invite;
+  return {
+    invite: updated ? mapInviteRow(updated as Record<string, unknown>) : invite,
+    emailDelivered: delivered,
+  };
 }
 
 async function refreshBatchCounts(

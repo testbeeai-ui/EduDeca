@@ -10,16 +10,24 @@ import {
   parseStudentCsv,
   resendSingleInvite,
 } from "@/lib/admin/invitations";
+import { INVITE_DAILY_LIMIT } from "@/lib/admin/invite-types";
 import { createSupabaseServer } from "@/lib/supabase/server";
+
+async function requireAdmin() {
+  const supabase = await createSupabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user || !user.email || !isTesterInvestorEmail(user.email)) {
+    return { supabase, user: null as null };
+  }
+  return { supabase, user };
+}
 
 export async function GET(request: Request) {
   try {
-    const supabase = await createSupabaseServer();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user || !user.email || !isTesterInvestorEmail(user.email)) {
+    const { supabase, user } = await requireAdmin();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized admin access" }, { status: 403 });
     }
 
@@ -44,16 +52,15 @@ export async function GET(request: Request) {
         i.invitedAt &&
         new Date(i.invitedAt) >= startOfUtcDay,
     ).length;
-    const dailyLimit = 100;
 
     return NextResponse.json({
       success: true,
       batches,
       invites,
       quota: {
-        dailyLimit,
+        dailyLimit: INVITE_DAILY_LIMIT,
         sentToday,
-        remainingToday: Math.max(0, dailyLimit - sentToday),
+        remainingToday: Math.max(0, INVITE_DAILY_LIMIT - sentToday),
         queuedTomorrowTotal: invites.filter((i) => i.status === "queued_tomorrow")
           .length,
       },
@@ -72,17 +79,13 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const supabase = await createSupabaseServer();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user || !user.email || !isTesterInvestorEmail(user.email)) {
+    const { supabase, user } = await requireAdmin();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized admin access" }, { status: 403 });
     }
 
     const body = await request.json();
-    const { collegeName, csvText, dailyLimit = 100 } = body;
+    const { collegeName, csvText, dailyLimit = INVITE_DAILY_LIMIT } = body;
 
     if (!csvText || typeof csvText !== "string") {
       return NextResponse.json({ error: "Missing CSV data" }, { status: 400 });
@@ -99,21 +102,24 @@ export async function POST(request: Request) {
 
     const targetCollege = parsed.collegeNameDetected || collegeName || "Vishwa College";
 
-    const { batch, sentCount, queuedCount } = await addAdminInviteBatch(
-      supabase,
-      targetCollege,
-      parsed.records,
-      Number(dailyLimit),
-    );
+    const { batch, sentCount, queuedCount, emailDelivered, emailFailed } =
+      await addAdminInviteBatch(
+        supabase,
+        targetCollege,
+        parsed.records,
+        Number(dailyLimit),
+      );
 
     return NextResponse.json({
       success: true,
       batch,
       sentCount,
       queuedCount,
+      emailDelivered,
+      emailFailed,
       totalParsed: parsed.records.length,
       errors: parsed.errors,
-      message: `Batch created for ${targetCollege}: ${sentCount} email invitations sent today, ${queuedCount} queued for tomorrow.`,
+      message: `Batch created for ${targetCollege}: ${sentCount} invites marked for today (${emailDelivered} SMTP delivered, ${emailFailed} SMTP failed), ${queuedCount} queued.`,
     });
   } catch (error) {
     console.error("[api/admin/invitations POST]", error);
@@ -131,12 +137,8 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    const supabase = await createSupabaseServer();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user || !user.email || !isTesterInvestorEmail(user.email)) {
+    const { supabase, user } = await requireAdmin();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized admin access" }, { status: 403 });
     }
 
@@ -144,22 +146,29 @@ export async function PATCH(request: Request) {
     const { action, batchId, inviteId } = body;
 
     if (action === "dispatch_queued") {
-      const count = await dispatchQueuedInvites(
+      const result = await dispatchQueuedInvites(
         supabase,
         typeof batchId === "string" ? batchId : undefined,
-        100,
+        INVITE_DAILY_LIMIT,
       );
       return NextResponse.json({
         success: true,
-        message: `Successfully dispatched ${count} queued invitation emails.`,
+        ...result,
+        message: `Dispatched ${result.dispatched} queued invites (${result.emailDelivered} SMTP delivered, ${result.emailFailed} SMTP failed).`,
       });
     }
 
     if (action === "resend_single" && inviteId) {
-      const target = await resendSingleInvite(supabase, String(inviteId));
+      const { invite, emailDelivered } = await resendSingleInvite(
+        supabase,
+        String(inviteId),
+      );
       return NextResponse.json({
         success: true,
-        message: `Invitation email resent to ${target?.email || inviteId}.`,
+        emailDelivered,
+        message: emailDelivered
+          ? `Invitation email resent to ${invite?.email || inviteId}.`
+          : `Invite updated for ${invite?.email || inviteId}, but SMTP delivery failed or is not configured.`,
       });
     }
 
