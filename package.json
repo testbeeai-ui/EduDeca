@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start -p 3001",
     "lint": "eslint",
-    "test": "npx tsx --test lib/admin/invite-dispatch.test.ts lib/college/verification-decision.test.ts",
+    "test": "npx tsx --test lib/admin/invite-dispatch.test.ts lib/college/verification-decision.test.ts lib/email/emailDailyCap.test.ts lib/email/studentWelcomeEmailTemplate.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
