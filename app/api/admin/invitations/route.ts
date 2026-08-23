@@ -125,11 +125,8 @@ export async function POST(request: Request) {
       emailFailed,
       quota: {
         dailyLimit: sharedQuota.dailyLimit,
-        sentToday: sharedQuota.sentToday + emailDelivered,
-        remainingToday: Math.max(
-          0,
-          sharedQuota.dailyLimit - (sharedQuota.sentToday + emailDelivered),
-        ),
+        sentToday: sharedQuota.sentToday,
+        remainingToday: sharedQuota.remainingToday,
         istDate: sharedQuota.istDate,
         quotaSource: "shared_transactional_email_logs",
       },
@@ -159,12 +156,13 @@ export async function PATCH(request: Request) {
     }
 
     const body = await request.json();
-    const { action, batchId, inviteId } = body;
+    const { action, batchId, inviteId, collegeName } = body;
 
     if (action === "dispatch_queued") {
       const result = await dispatchQueuedInvites(
         supabase,
         typeof batchId === "string" ? batchId : undefined,
+        typeof collegeName === "string" ? collegeName : undefined,
       );
       const shared = await getSharedEmailQuota();
       return NextResponse.json({

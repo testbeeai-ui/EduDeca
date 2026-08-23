@@ -379,6 +379,7 @@ export async function reconcileInvitesAlreadyRegistered(
 export async function dispatchQueuedInvites(
   supabase: SupabaseClient,
   batchId?: string,
+  collegeName?: string,
 ): Promise<{ dispatched: number; emailDelivered: number; emailFailed: number }> {
   const sharedQuota = await getSharedEmailQuota();
   const sendBudget = sharedQuota.remainingToday;
@@ -395,6 +396,9 @@ export async function dispatchQueuedInvites(
 
   if (batchId) {
     query = query.eq("batch_id", batchId);
+  }
+  if (collegeName && collegeName !== "all") {
+    query = query.eq("college_name", collegeName);
   }
 
   const { data, error } = await query;

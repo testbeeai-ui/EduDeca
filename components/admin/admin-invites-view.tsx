@@ -203,7 +203,12 @@ export function AdminInvitesView() {
       });
       const json = await res.json();
       if (res.ok) {
-        setNotice(`Resent invite email to ${email}`);
+        setNotice(
+          json.message ||
+            (json.emailDelivered
+              ? `Resent invite email to ${email}`
+              : `Invite updated for ${email}, but SMTP delivery failed, was blocked by shared daily cap, or is not configured.`),
+        );
         await fetchInvitesData();
       }
     } catch (e) {
