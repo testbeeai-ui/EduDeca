@@ -48,6 +48,7 @@ export async function sendCollegeStudentInviteEmail(params: {
     subject: `You're invited to EduDeca — ${params.collegeName}`,
     html,
     text,
+    log: { kind: "edudeca_invite" },
   });
 
   if (!result.ok) {
