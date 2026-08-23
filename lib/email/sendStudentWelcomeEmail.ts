@@ -38,7 +38,6 @@ export async function sendStudentWelcomeEmail(params: {
     subject,
     html,
     text,
-    log: { kind: "welcome", userId: params.userId ?? null },
   });
 
   if (!result.ok) {
