@@ -10,12 +10,30 @@ import {
 /** Slot index 1–10 → selected discipline id (null = empty track slot). */
 export type DisciplineLineup = Record<number, DisciplineId | null>;
 
+/** Track C slot — still stored as slot 5; v3 UI locks Entrepreneurship here. */
+export const TRACK_A_SLOT = 3;
+export const TRACK_B_SLOT = 4;
+export const ENTREPRENEURSHIP_SLOT = 5;
+export const LOCKED_ENTREPRENEURSHIP_ID: DisciplineId = "ent";
+
 export function emptyLineup(): DisciplineLineup {
   const lineup: DisciplineLineup = {};
   for (const slot of DISCIPLINE_SLOTS) {
-    lineup[slot.slot] = slot.kind === "fixed" && slot.fixedId ? slot.fixedId : null;
+    if (slot.kind === "fixed" && slot.fixedId) {
+      lineup[slot.slot] = slot.fixedId;
+    } else if (slot.slot === ENTREPRENEURSHIP_SLOT) {
+      lineup[slot.slot] = LOCKED_ENTREPRENEURSHIP_ID;
+    } else {
+      lineup[slot.slot] = null;
+    }
   }
   return lineup;
+}
+
+/** Keep slot 5 as Entrepreneurship without touching family tracks. */
+export function lockEntrepreneurshipSlot(lineup: DisciplineLineup): DisciplineLineup {
+  if (lineup[ENTREPRENEURSHIP_SLOT] === LOCKED_ENTREPRENEURSHIP_ID) return lineup;
+  return { ...lineup, [ENTREPRENEURSHIP_SLOT]: LOCKED_ENTREPRENEURSHIP_ID };
 }
 
 export function filledCount(lineup: DisciplineLineup): number {
@@ -34,42 +52,71 @@ export function lineupIds(lineup: DisciplineLineup): DisciplineId[] {
 
 /**
  * Track A + B are linked by family (math ↔ bio).
- * Track C is independent pick-1-of-2.
- * Clicking the already-selected option unchecks it (and clears the linked A/B pair).
+ * Track C is stored in slot 5 as locked Entrepreneurship — the picker never offers it.
+ * Clicking the already-selected Track A or B option unchecks both linked slots.
  */
 export function selectTrackOption(
   lineup: DisciplineLineup,
   track: "A" | "B" | "C",
   disciplineId: DisciplineId,
 ): DisciplineLineup {
-  const next = { ...lineup };
-  const def = DISCIPLINES[disciplineId];
+  switch (track) {
+    case "C":
+      return lockEntrepreneurshipSlot(lineup);
+    case "A":
+    case "B": {
+      const next = lockEntrepreneurshipSlot({ ...lineup });
+      const family: DisciplineFamily = DISCIPLINES[disciplineId].family;
+      if (family !== "math" && family !== "bio") {
+        return next;
+      }
 
-  if (track === "C") {
-    next[5] = lineup[5] === disciplineId ? null : disciplineId;
-    return next;
+      const clickedSlot = track === "A" ? TRACK_A_SLOT : TRACK_B_SLOT;
+      if (lineup[clickedSlot] === disciplineId) {
+        next[TRACK_A_SLOT] = null;
+        next[TRACK_B_SLOT] = null;
+        return next;
+      }
+
+      const slotA = DISCIPLINE_SLOTS.find((s) => s.track === "A");
+      const slotB = DISCIPLINE_SLOTS.find((s) => s.track === "B");
+      const pickA = slotA?.options?.find((id) => DISCIPLINES[id].family === family);
+      const pickB = slotB?.options?.find((id) => DISCIPLINES[id].family === family);
+      if (pickA) next[TRACK_A_SLOT] = pickA;
+      if (pickB) next[TRACK_B_SLOT] = pickB;
+      return next;
+    }
+    default: {
+      const _never: never = track;
+      return _never;
+    }
   }
+}
 
-  const family: DisciplineFamily = def.family;
-  if (family !== "math" && family !== "bio") {
-    return next;
-  }
+export type PathFamily = "math" | "bio";
 
-  const slot = track === "A" ? 3 : 4;
-  // Unclick: same card again clears both linked track slots.
-  if (lineup[slot] === disciplineId) {
-    next[3] = null;
-    next[4] = null;
-    return next;
-  }
+/** Which Decathlon path is selected (Math set vs Bio set), if any. */
+export function selectedPathFamily(lineup: DisciplineLineup): PathFamily | null {
+  const trackA = lineup[TRACK_A_SLOT];
+  if (!trackA) return null;
+  const family = DISCIPLINES[trackA].family;
+  if (family === "math" || family === "bio") return family;
+  return null;
+}
 
-  const slotA = DISCIPLINE_SLOTS.find((s) => s.track === "A");
-  const slotB = DISCIPLINE_SLOTS.find((s) => s.track === "B");
-  const pickA = slotA?.options?.find((id) => DISCIPLINES[id].family === family);
-  const pickB = slotB?.options?.find((id) => DISCIPLINES[id].family === family);
-  if (pickA) next[3] = pickA;
-  if (pickB) next[4] = pickB;
-  return next;
+/**
+ * Pick a whole path set (v3.1 UI):
+ * Track A = Mathematics + Applied Mathematics
+ * Track B = Biology + Biotechnology
+ * Radio-style: selecting the same path again keeps it selected.
+ */
+export function selectPathFamily(
+  lineup: DisciplineLineup,
+  family: PathFamily,
+): DisciplineLineup {
+  if (selectedPathFamily(lineup) === family) return lineup;
+  const seed: DisciplineId = family === "math" ? "mat" : "bio";
+  return selectTrackOption(lineup, "A", seed);
 }
 
 export function validateLineup(ids: unknown): DisciplineLineup | null {
@@ -86,5 +133,25 @@ export function validateLineup(ids: unknown): DisciplineLineup | null {
     const slot = DISCIPLINE_SLOTS.find((s) => s.fixedId === fixedId);
     if (!slot || lineup[slot.slot] !== fixedId) return null;
   }
-  return lineup;
+
+  const locked = lockEntrepreneurshipSlot(lineup);
+  const trackA = locked[TRACK_A_SLOT];
+  const trackB = locked[TRACK_B_SLOT];
+  const slotA = DISCIPLINE_SLOTS.find((s) => s.track === "A");
+  const slotB = DISCIPLINE_SLOTS.find((s) => s.track === "B");
+  if (!trackA || !trackB || !slotA?.options?.includes(trackA) || !slotB?.options?.includes(trackB)) {
+    return null;
+  }
+  if (DISCIPLINES[trackA].family !== DISCIPLINES[trackB].family) return null;
+
+  const lockedIds = lineupIds(locked);
+  if (new Set(lockedIds).size !== lockedIds.length) return null;
+
+  return locked;
+}
+
+/** True when two 10-id arrays match slot-for-slot. */
+export function lineupIdsMatch(stored: unknown, expected: DisciplineId[]): boolean {
+  if (!Array.isArray(stored) || stored.length !== expected.length) return false;
+  return stored.every((id, index) => id === expected[index]);
 }

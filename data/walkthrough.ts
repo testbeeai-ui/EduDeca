@@ -8,7 +8,7 @@ export const walkthroughSteps: WalkthroughStep[] = [
     stepLabel: "STEP 1 · JOIN FREE",
     title: "10 subjects. 10 questions each.",
     description:
-      "Class XI & XII questions across Physics, Chemistry, Mathematics, Applied Mathematics, Biology, Biotechnology, AI & Computer Science, Entrepreneurship, Verbal Ability, Quantitative Ability, Analytical Ability, General Knowledge, and Financial Literacy — pick your path, free forever from Level 1.",
+      "Class XI & XII questions across Physics, Chemistry, Mathematics, Applied Mathematics, Biology, Biotechnology, Entrepreneurship, Verbal Ability, Quantitative Ability, Analytical Ability, General Knowledge, and Financial Literacy — pick your path, free forever from Level 1.",
     icon: "target",
     accent: "teal",
   },
@@ -52,7 +52,7 @@ export const walkthroughSteps: WalkthroughStep[] = [
     stepLabel: "STEP 5 · YOUR PATH",
     title: "Choose your Decathlon disciplines",
     description:
-      "Lock your ten-event lineup — mandatory cores plus three free-path picks that shape how you compete.",
+      "Locked cores stay. Pick one family path — the linked subject follows automatically.",
     icon: "target",
     accent: "amber",
   },
@@ -61,7 +61,7 @@ export const walkthroughSteps: WalkthroughStep[] = [
     slug: "sign-in",
     pillLabel: "Sign in",
     stepLabel: "FINAL STEP · SIGN IN",
-    title: "Start your streak today",
+    title: "Start Today …",
     description: "No passwords. Continue with Google to enter EduDeca.",
     icon: "phone",
     accent: "teal",

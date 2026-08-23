@@ -2,26 +2,15 @@
 
 import {
   ArrowLeft,
-  Atom,
-  Bot,
-  Check,
   Dna,
-  FlaskConical,
-  Globe2,
-  Hash,
-  Lightbulb,
-  MessageSquare,
   Microscope,
-  Puzzle,
   Ruler,
   Sigma,
-  Wallet,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import {
   DISCIPLINES,
-  DISCIPLINE_SLOTS,
   LINEUP_SIZE,
   type DisciplineDef,
   type DisciplineId,
@@ -29,69 +18,138 @@ import {
 import {
   filledCount,
   isLineupComplete,
-  selectTrackOption,
+  selectPathFamily,
+  selectedPathFamily,
+  TRACK_A_SLOT,
+  TRACK_B_SLOT,
   type DisciplineLineup,
+  type PathFamily,
 } from "@/lib/disciplines/selection";
-import type { LevelAccent } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-const ICONS: Record<DisciplineDef["icon"], LucideIcon> = {
-  atom: Atom,
-  flask: FlaskConical,
-  sigma: Sigma,
-  dna: Dna,
-  ruler: Ruler,
-  microscope: Microscope,
-  bot: Bot,
-  lightbulb: Lightbulb,
-  message: MessageSquare,
-  hash: Hash,
-  puzzle: Puzzle,
-  globe: Globe2,
-  wallet: Wallet,
-};
+type ChipTone = "teal" | "amber" | "purple" | "gold" | "pink";
 
-const ACCENT: Record<
-  LevelAccent,
-  { border: string; soft: string; ring: string; lane: string }
-> = {
+const CHIP_TONE: Record<ChipTone, { border: string; text: string; num: string }> = {
   teal: {
-    border: "border-emerald-500/35",
-    soft: "bg-emerald-500/15 text-emerald-400",
-    ring: "shadow-[inset_0_0_0_1px_rgba(29,158,117,0.9)] bg-emerald-500/10",
-    lane: "#1D9E75",
+    border: "border-[rgba(29,158,117,0.6)]",
+    text: "text-[#EAFBF4]",
+    num: "bg-[#1D9E75]",
   },
   amber: {
-    border: "border-amber-500/35",
-    soft: "bg-amber-500/15 text-amber-400",
-    ring: "shadow-[inset_0_0_0_1px_rgba(239,159,39,0.9)] bg-amber-500/10",
-    lane: "#EF9F27",
+    border: "border-[rgba(239,159,39,0.65)]",
+    text: "text-[#FFF3E0]",
+    num: "bg-[#EF9F27]",
   },
-  violet: {
-    border: "border-violet-400/35",
-    soft: "bg-violet-500/15 text-violet-300",
-    ring: "shadow-[inset_0_0_0_1px_rgba(127,119,221,0.9)] bg-violet-500/10",
-    lane: "#7F77DD",
+  purple: {
+    border: "border-[rgba(127,119,221,0.65)]",
+    text: "text-[#F1F0FD]",
+    num: "bg-[#7F77DD]",
   },
-  blue: {
-    border: "border-emerald-500/35",
-    soft: "bg-emerald-500/15 text-emerald-400",
-    ring: "shadow-[inset_0_0_0_1px_rgba(29,158,117,0.9)] bg-emerald-500/10",
-    lane: "#1D9E75",
+  gold: {
+    border: "border-[rgba(240,180,41,0.65)]",
+    text: "text-[#FFF8E1]",
+    num: "bg-[#F0B429]",
   },
   pink: {
-    border: "border-rose-400/35",
-    soft: "bg-rose-500/15 text-rose-300",
-    ring: "shadow-[inset_0_0_0_1px_rgba(212,83,126,0.9)] bg-rose-500/10",
-    lane: "#D4537E",
-  },
-  rose: {
-    border: "border-rose-400/35",
-    soft: "bg-rose-500/15 text-rose-300",
-    ring: "shadow-[inset_0_0_0_1px_rgba(212,83,126,0.9)] bg-rose-500/10",
-    lane: "#D4537E",
+    border: "border-[rgba(232,93,138,0.65)]",
+    text: "text-[#FFEFF4]",
+    num: "bg-[#E85D8A]",
   },
 };
+
+const TRACK_ICONS: Partial<Record<DisciplineId, LucideIcon>> = {
+  mat: Sigma,
+  bio: Dna,
+  amat: Ruler,
+  biotech: Microscope,
+};
+
+const LOCKED_CHIP_IDS: DisciplineId[] = [
+  "phy",
+  "che",
+  "eng",
+  "eco",
+  "log",
+  "gk",
+  "fin",
+  "ent",
+];
+
+const CHIP_LABEL: Partial<Record<DisciplineId, string>> = {
+  eng: "Verbal",
+  eco: "Quantitative",
+  log: "Analytical",
+  gk: "General Knowledge (GK)",
+  fin: "Financial Literacy (FinLit)",
+};
+
+const CHIP_TONE_FOR: Partial<Record<DisciplineId, ChipTone>> = {
+  phy: "teal",
+  che: "amber",
+  eng: "teal",
+  eco: "teal",
+  log: "purple",
+  gk: "gold",
+  fin: "pink",
+  ent: "gold",
+};
+
+/** Visual lineup order from Step 5 v3.1 — storage slots stay 1–10. */
+const LINEUP_DISPLAY: Array<{
+  n: number;
+  tone: ChipTone;
+  id?: DisciplineId;
+  slot?: number;
+  emptyLabel: string;
+}> = [
+  { n: 1, tone: "teal", id: "phy", emptyLabel: "Physics" },
+  { n: 2, tone: "amber", id: "che", emptyLabel: "Chemistry" },
+  { n: 3, tone: "teal", id: "eng", emptyLabel: "Verbal" },
+  { n: 4, tone: "teal", id: "eco", emptyLabel: "Quant" },
+  { n: 5, tone: "purple", id: "log", emptyLabel: "Analytical" },
+  { n: 6, tone: "gold", id: "gk", emptyLabel: "GK" },
+  { n: 7, tone: "pink", id: "fin", emptyLabel: "FinLit" },
+  { n: 8, tone: "gold", id: "ent", emptyLabel: "Entrep" },
+  { n: 9, tone: "teal", slot: TRACK_A_SLOT, emptyLabel: "—" },
+  { n: 10, tone: "purple", slot: TRACK_B_SLOT, emptyLabel: "—" },
+];
+
+/** Path sets matching edudeca_step5_v3.1.html Track A / Track B cards. */
+const PATH_SETS: Array<{
+  family: PathFamily;
+  title: string;
+  selectedTone: "teal" | "purple";
+  subjects: DisciplineId[];
+}> = [
+  {
+    family: "math",
+    title: "Track A",
+    selectedTone: "teal",
+    subjects: ["mat", "amat"],
+  },
+  {
+    family: "bio",
+    title: "Track B",
+    selectedTone: "purple",
+    subjects: ["bio", "biotech"],
+  },
+];
+
+const PATH_SELECTED: Record<"teal" | "purple", { box: string; card: string; set: string }> = {
+  teal: {
+    box: "bg-[#1D9E75] border-[#1D9E75]",
+    card: "border-[rgba(29,158,117,0.7)] bg-[rgba(29,158,117,0.08)]",
+    set: "border-[rgba(29,158,117,0.7)] bg-[rgba(29,158,117,0.05)]",
+  },
+  purple: {
+    box: "bg-[#7F77DD] border-[#7F77DD]",
+    card: "border-[rgba(127,119,221,0.7)] bg-[rgba(127,119,221,0.08)]",
+    set: "border-[rgba(29,158,117,0.7)] bg-[rgba(29,158,117,0.05)]",
+  },
+};
+
+const HIDE_SCROLLBAR =
+  "overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
 
 interface DisciplinePickerProps {
   lineup: DisciplineLineup;
@@ -100,63 +158,115 @@ interface DisciplinePickerProps {
   onBack: () => void;
 }
 
+function toneFor(id: DisciplineId): ChipTone {
+  return CHIP_TONE_FOR[id] ?? "teal";
+}
+
 function LockedChip({ def }: { def: DisciplineDef }) {
-  const Icon = ICONS[def.icon];
-  const accent = ACCENT[def.accent];
+  const tone = CHIP_TONE[toneFor(def.id)];
   return (
     <div
       className={cn(
-        "inline-flex min-w-0 items-center gap-1.5 rounded-lg border px-2 py-1.5",
-        accent.border,
-        accent.ring,
+        "inline-flex max-w-full items-center gap-1.5 rounded-[10px] border-[1.5px] bg-white/[0.02] px-3 py-2 text-xs font-semibold sm:gap-2 sm:px-4 sm:py-2.5 sm:text-[13.5px]",
+        tone.border,
+        tone.text,
       )}
     >
-      <span className={cn("inline-flex size-5 shrink-0 items-center justify-center rounded-md", accent.soft)}>
-        <Icon className="size-3" />
-      </span>
-      <span className="truncate text-[11px] font-semibold text-[#EAEEF3]">{def.shortName}</span>
-      <span className="inline-flex size-3.5 shrink-0 items-center justify-center rounded-sm bg-white text-emerald-600">
-        <Check className="size-2.5 stroke-[3]" />
+      <span>{CHIP_LABEL[def.id] ?? def.name}</span>
+      <span className="ml-1 inline-flex size-4 items-center justify-center rounded-[4px] bg-white text-[11px] font-black text-[#0B0E14]">
+        ✓
       </span>
     </div>
   );
 }
 
-function ChoiceCard({
-  def,
+function PathSubjectRow({
+  id,
   selected,
-  onClick,
+  selectedTone,
 }: {
-  def: DisciplineDef;
+  id: DisciplineId;
   selected: boolean;
-  onClick: () => void;
+  selectedTone: "teal" | "purple";
 }) {
-  const Icon = ICONS[def.icon];
-  const accent = ACCENT[def.accent];
+  const def = DISCIPLINES[id];
+  const Icon = TRACK_ICONS[id] ?? Sigma;
+  const selectedBox = PATH_SELECTED[selectedTone].box;
+  const selectedCard = PATH_SELECTED[selectedTone].card;
+
+  return (
+    <div
+      className={cn(
+        "flex min-h-11 w-full items-center justify-between rounded-[9px] border-[1.5px] px-3 py-2.5 sm:px-3.5 sm:py-3",
+        selected ? selectedCard : "border-[#1E2430] bg-transparent",
+      )}
+    >
+      <span className="flex min-w-0 items-center gap-2 text-[13px] font-semibold text-[#F2F4F8] sm:gap-2.5 sm:text-[13.5px]">
+        <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-lg bg-white/[0.04] text-[#8B93A3]">
+          <Icon className="size-3.5" aria-hidden />
+        </span>
+        <span className="truncate">{def.name}</span>
+      </span>
+      <span
+        className={cn(
+          "inline-flex size-[18px] shrink-0 items-center justify-center rounded-[5px] border-[1.5px] text-[11px] font-black text-[#0B0E14]",
+          selected ? selectedBox : "border-[#1E2430] bg-transparent",
+        )}
+        aria-hidden
+      >
+        {selected ? "✓" : ""}
+      </span>
+    </div>
+  );
+}
+
+function PathTrackSet({
+  title,
+  subjects,
+  selected,
+  selectedTone,
+  onSelect,
+}: {
+  title: string;
+  subjects: DisciplineId[];
+  selected: boolean;
+  selectedTone: "teal" | "purple";
+  onSelect: () => void;
+}) {
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={onSelect}
+      aria-pressed={selected}
       className={cn(
-        "flex w-full items-center gap-2 rounded-xl border px-2.5 py-2 text-left transition-all",
-        accent.border,
-        selected ? accent.ring : "bg-[#141A23] opacity-65 hover:opacity-100",
+        "min-w-0 rounded-xl border px-4 py-3.5 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1D9E75]",
+        selected
+          ? PATH_SELECTED[selectedTone].set
+          : "border-[#1E2430] bg-white/[0.015] hover:border-white/20",
       )}
     >
-      <span className={cn("inline-flex size-7 shrink-0 items-center justify-center rounded-lg", accent.soft)}>
-        <Icon className="size-3.5" />
-      </span>
-      <span className="min-w-0 flex-1 truncate text-[12px] font-bold text-[#EAEEF3]">{def.name}</span>
-      <span
-        className={cn(
-          "inline-flex size-4 shrink-0 items-center justify-center rounded border",
-          selected
-            ? "border-white bg-white text-emerald-600"
-            : "border-white/10 bg-[#1B2330] text-transparent",
-        )}
-      >
-        <Check className="size-2.5 stroke-[3]" />
-      </span>
+      <div className="mb-2.5 flex items-center justify-between gap-2">
+        <h3 className="text-sm font-bold text-[#F2F4F8]">{title}</h3>
+        <span
+          className={cn(
+            "inline-flex size-[22px] shrink-0 items-center justify-center rounded-full border-2",
+            selected ? "border-[#1D9E75] bg-[#1D9E75]" : "border-[#1E2430] bg-transparent",
+          )}
+          aria-hidden
+        >
+          {selected ? <span className="size-[9px] rounded-full bg-[#062017]" /> : null}
+        </span>
+      </div>
+      <div className="pointer-events-none flex flex-col gap-2">
+        {subjects.map((id) => (
+          <PathSubjectRow
+            key={id}
+            id={id}
+            selected={selected}
+            selectedTone={selectedTone}
+          />
+        ))}
+      </div>
     </button>
   );
 }
@@ -164,157 +274,126 @@ function ChoiceCard({
 export function DisciplinePicker({ lineup, onChange, onContinue, onBack }: DisciplinePickerProps) {
   const count = filledCount(lineup);
   const complete = isLineupComplete(lineup);
-  const remaining = LINEUP_SIZE - count;
-
-  const pick = (track: "A" | "B" | "C", id: DisciplineId) => {
-    onChange(selectTrackOption(lineup, track, id));
-  };
-
-  const trackA = DISCIPLINE_SLOTS.find((s) => s.track === "A")!;
-  const trackB = DISCIPLINE_SLOTS.find((s) => s.track === "B")!;
-  const trackC = DISCIPLINE_SLOTS.find((s) => s.track === "C")!;
+  const path = selectedPathFamily(lineup);
 
   return (
-    <div className="flex w-full flex-col gap-3">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="text-lg font-bold tracking-tight text-[#EAEEF3] sm:text-xl">
+    <div className="flex w-full min-w-0 flex-col">
+      <div className="mb-3.5 flex items-start justify-between gap-3 sm:gap-5">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-[clamp(1.25rem,4.2vw,1.5625rem)] font-bold leading-tight tracking-[-0.01em] text-[#F2F4F8]">
             Choose your Decathlon disciplines
           </h2>
-          <p className="mt-0.5 text-xs text-[#8B96A8] sm:text-[13px]">
-            Locked cores stay. Pick one family path and one Track C option.
+          <p className="mt-1 text-[12.5px] leading-snug text-[#8B93A3] sm:text-[13.5px]">
+            Locked cores stay. Pick one family path — the linked subject follows automatically.
           </p>
         </div>
-        <div className="shrink-0 rounded-xl border border-white/8 bg-[#141A23] px-3 py-2 text-right">
-          <p className="text-[9px] font-semibold uppercase tracking-wide text-[#5C6577]">Locked</p>
-          <p className="text-sm font-extrabold tabular-nums text-[#EAEEF3]">
-            {count}
-            <span className="text-[#5C6577]">/{LINEUP_SIZE}</span>
-          </p>
-        </div>
-      </div>
-
-      <div className="h-1 overflow-hidden rounded-full bg-[#1B2330]">
-        <div
-          className="h-full rounded-full bg-gradient-to-r from-emerald-500 via-violet-400 to-rose-400 transition-[width] duration-300"
-          style={{ width: `${(count / LINEUP_SIZE) * 100}%` }}
-        />
-      </div>
-
-      {/* Mandatory strip — one horizontal band */}
-      <section className="rounded-xl border border-white/8 bg-[#141A23]/40 p-2.5">
-        <div className="mb-2 flex items-center gap-2">
-          <span className="text-[10px] font-extrabold uppercase tracking-wide text-emerald-400">
-            Locked in
+        <div className="min-w-[72px] shrink-0 rounded-[14px] border border-[#1E2430] bg-[#131722] px-3 py-1.5 text-center sm:min-w-[78px] sm:px-[18px] sm:py-[7px]">
+          <span className="mb-px block text-[10px] font-semibold tracking-[0.08em] text-[#8B93A3]">
+            LOCKED
           </span>
-          <span className="text-[10px] text-[#5C6577]">Core sciences + core skills</span>
+          <span className="block text-[17px] font-bold tabular-nums text-[#1D9E75]">
+            {count}/{LINEUP_SIZE}
+          </span>
         </div>
-        <div className="flex flex-wrap gap-1.5">
-          {(["phy", "che", "eng", "eco", "log", "gk", "fin"] as const).map((id) => (
+      </div>
+
+      <div
+        className="mb-[22px] h-1 rounded-full"
+        style={{ background: "linear-gradient(90deg,#1D9E75,#378ADD,#7F77DD,#E85D8A)" }}
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={LINEUP_SIZE}
+        aria-valuenow={count}
+        aria-label="Disciplines locked"
+      />
+
+      <section className="mb-4 rounded-2xl border border-[#1E2430] bg-[#131722] px-3.5 py-4 sm:px-5 sm:py-[18px]">
+        <div className="mb-[13px] flex flex-wrap items-center gap-2.5">
+          <span className="text-[11px] font-bold tracking-[0.08em] text-[#1D9E75]">LOCKED IN</span>
+          <span className="text-xs text-[#8B93A3]">Core sciences + core skills</span>
+        </div>
+        <div className="flex flex-wrap gap-2 sm:gap-3">
+          {LOCKED_CHIP_IDS.map((id) => (
             <LockedChip key={id} def={DISCIPLINES[id]} />
           ))}
         </div>
       </section>
 
-      {/* Tracks side-by-side to use width, not height */}
-      <section className="min-h-0">
-        <div className="mb-2 flex flex-wrap items-center gap-2">
-          <span className="text-[10px] font-extrabold uppercase tracking-wide text-amber-400">
-            Your path
-          </span>
-          <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-400">
-            Pick 1 of 2 · 3 tracks
-          </span>
-          <span className="text-[10px] text-[#5C6577]">
-            A + B are linked by family (Math or Bio)
+      <section className="mb-4 rounded-2xl border border-[#1E2430] bg-[#131722] px-3.5 py-4 sm:px-5 sm:py-[18px]">
+        <div className="mb-[13px] flex flex-wrap items-center gap-2.5">
+          <span className="text-[11px] font-bold tracking-[0.08em] text-[#EF9F27]">YOUR PATH</span>
+          <span className="text-xs text-[#8B93A3]">
+            Pick one track — both its subjects come together
           </span>
         </div>
 
-        <div className="grid gap-2 sm:grid-cols-3 sm:gap-3">
-          <TrackColumn
-            label="Track A"
-            hint="Slot 3"
-            options={trackA.options!}
-            selectedId={lineup[3]}
-            onPick={(id) => pick("A", id)}
-          />
-          <TrackColumn
-            label="Track B"
-            hint="Slot 4 · auto with A"
-            options={trackB.options!}
-            selectedId={lineup[4]}
-            onPick={(id) => pick("B", id)}
-          />
-          <TrackColumn
-            label="Track C"
-            hint="Slot 5 · free pick"
-            options={trackC.options!}
-            selectedId={lineup[5]}
-            onPick={(id) => pick("C", id)}
-          />
+        <div className="grid grid-cols-1 items-stretch gap-4 min-[700px]:grid-cols-2">
+          {PATH_SETS.map((set) => (
+            <PathTrackSet
+              key={set.family}
+              title={set.title}
+              subjects={set.subjects}
+              selected={path === set.family}
+              selectedTone={set.selectedTone}
+              onSelect={() => onChange(selectPathFamily(lineup, set.family))}
+            />
+          ))}
+        </div>
+        <p className="mt-2 text-[11px] text-[#8B93A3]">
+          Slots {TRACK_A_SLOT} &amp; {TRACK_B_SLOT} · choosing a track locks in both of its subjects
+          together.
+        </p>
+      </section>
+
+      <section className="rounded-2xl border border-[#1E2430] bg-[#131722] px-3.5 py-4 sm:px-5 sm:py-[18px]">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h3 className="text-sm font-bold text-[#F2F4F8]">Your lineup</h3>
+          <span className="text-[11.5px] text-[#8B93A3]">
+            {complete ? "Ready to continue" : "1 of 10 pending"}
+          </span>
+        </div>
+        <div data-lenis-prevent className={cn("flex flex-col gap-2.5", HIDE_SCROLLBAR)}>
+          {[LINEUP_DISPLAY.slice(0, 5), LINEUP_DISPLAY.slice(5)].map((row, rowIndex) => (
+            <div key={rowIndex} className="grid min-w-[32rem] grid-cols-5 gap-2.5 sm:min-w-0">
+              {row.map((item) => {
+                const id = item.id ?? (item.slot ? lineup[item.slot] : null);
+                const def = id ? DISCIPLINES[id] : null;
+                const tone = CHIP_TONE[item.tone];
+                return (
+                  <div
+                    key={item.n}
+                    title={def?.name ?? item.emptyLabel}
+                    className="rounded-[10px] border border-[#1E2430] bg-white/[0.015] px-1.5 pb-2 pt-2.5 text-center"
+                  >
+                    <span
+                      className={cn(
+                        "mx-auto mb-1.5 flex size-[17px] items-center justify-center rounded-[5px] text-[10px] font-extrabold text-[#0B0E14]",
+                        tone.num,
+                      )}
+                    >
+                      {item.n}
+                    </span>
+                    <span
+                      className={cn(
+                        "block truncate text-[11px] font-semibold",
+                        def ? "text-[#F2F4F8]" : "text-[#8B93A3]",
+                      )}
+                    >
+                      {def?.shortName ?? item.emptyLabel}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
         </div>
       </section>
 
-      {/* Compact lineup + actions */}
-      <div className="rounded-xl border border-white/8 bg-[#141A23] p-2.5">
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <p className="text-[11px] font-bold text-[#EAEEF3]">Your lineup</p>
-          <p className="text-[10px] text-[#5C6577]">
-            {complete
-              ? "Ready to continue"
-              : `${remaining} pick${remaining === 1 ? "" : "s"} left`}
-          </p>
-        </div>
-        <div className="grid grid-cols-5 gap-1.5 sm:grid-cols-10">
-          {DISCIPLINE_SLOTS.map((slot) => {
-            const id = lineup[slot.slot];
-            const def = id ? DISCIPLINES[id] : null;
-            const color = def ? ACCENT[def.accent].lane : undefined;
-            return (
-              <div
-                key={slot.slot}
-                title={def?.name ?? `Track ${slot.track ?? slot.slot}`}
-                className={cn(
-                  "flex min-w-0 flex-col items-center gap-0.5 rounded-lg border px-1 py-1.5",
-                  def ? "border-transparent" : "border-dashed border-white/10 bg-white/[0.02]",
-                )}
-                style={
-                  def
-                    ? {
-                        borderColor: color,
-                        background: `color-mix(in srgb, ${color} 12%, transparent)`,
-                      }
-                    : undefined
-                }
-              >
-                <span
-                  className={cn(
-                    "inline-flex size-4 items-center justify-center rounded font-mono text-[9px] font-extrabold",
-                    def ? "text-[#0E1117]" : "bg-[#1B2330] text-[#5C6577]",
-                  )}
-                  style={def ? { background: color } : undefined}
-                >
-                  {slot.slot}
-                </span>
-                <span
-                  className={cn(
-                    "w-full truncate text-center text-[9px] font-semibold",
-                    def ? "text-[#EAEEF3]" : "text-[#5C6577]",
-                  )}
-                >
-                  {def?.shortName ?? (slot.track ? slot.track : "—")}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="flex items-center gap-3">
+      <div className="mt-5 flex items-center gap-3.5">
         <button
           type="button"
           onClick={onBack}
-          className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl border border-border bg-background text-foreground hover:bg-muted"
+          className="inline-flex size-[42px] shrink-0 items-center justify-center rounded-full border border-[#1E2430] bg-[#131722] text-[#F2F4F8] transition-colors hover:bg-white/[0.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1D9E75]"
           aria-label="Previous step"
         >
           <ArrowLeft className="size-4" />
@@ -324,52 +403,16 @@ export function DisciplinePicker({ lineup, onChange, onContinue, onBack }: Disci
           disabled={!complete}
           onClick={onContinue}
           className={cn(
-            "h-10 flex-1 rounded-xl text-sm font-bold transition-all",
+            "h-auto min-w-0 flex-1 rounded-xl px-3 py-[13px] text-[13px] font-extrabold leading-tight transition-all sm:text-[14.5px]",
             complete
-              ? "bg-gradient-to-r from-emerald-600 to-teal-400 text-[#08130F] shadow-lg shadow-emerald-500/25"
-              : "cursor-not-allowed border border-white/10 bg-[#1B2330] text-[#5C6577]",
+              ? "bg-gradient-to-r from-[#1D9E75] to-[#22C08A] text-[#062017] shadow-[0_0_20px_rgba(29,158,117,0.3)]"
+              : "cursor-not-allowed border border-[#1E2430] bg-[#131722] text-[#8B93A3]",
           )}
         >
           {complete
             ? "Continue with your 10 disciplines →"
-            : `Complete ${remaining} more pick${remaining === 1 ? "" : "s"}`}
+            : "Choose a track to continue →"}
         </button>
-      </div>
-    </div>
-  );
-}
-
-function TrackColumn({
-  label,
-  hint,
-  options,
-  selectedId,
-  onPick,
-}: {
-  label: string;
-  hint: string;
-  options: DisciplineId[];
-  selectedId: DisciplineId | null;
-  onPick: (id: DisciplineId) => void;
-}) {
-  return (
-    <div className="rounded-xl border border-white/8 bg-[#141A23]/50 p-2">
-      <div className="mb-1.5 flex items-baseline justify-between gap-2 px-0.5">
-        <p className="text-[11px] font-bold text-[#EAEEF3]">{label}</p>
-        <p className="text-[9px] text-[#5C6577]">{hint}</p>
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <ChoiceCard
-          def={DISCIPLINES[options[0]]}
-          selected={selectedId === options[0]}
-          onClick={() => onPick(options[0])}
-        />
-        <div className="text-center text-[9px] font-extrabold tracking-wide text-[#5C6577]">OR</div>
-        <ChoiceCard
-          def={DISCIPLINES[options[1]]}
-          selected={selectedId === options[1]}
-          onClick={() => onPick(options[1])}
-        />
       </div>
     </div>
   );

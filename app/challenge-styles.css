@@ -213,6 +213,18 @@
   margin-bottom: 8px;
 }
 
+.edu-blast-challenge .ebc-q-text .katex,
+.edu-blast-challenge .ebc-opt-text .katex,
+.edu-blast-challenge .ebc-explanation .katex {
+  font-size: 1em;
+  color: inherit;
+}
+
+.edu-blast-challenge .ebc-q-text .katex-html,
+.edu-blast-challenge .ebc-opt-text .katex-html {
+  white-space: nowrap;
+}
+
 .edu-blast-challenge .ebc-q-text {
   font-size: clamp(17px, 2vw, 22px);
   font-weight: 800;

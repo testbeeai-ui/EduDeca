@@ -12,9 +12,11 @@ import {
   emptyLineup,
   isLineupComplete,
   lineupIds,
+  lockEntrepreneurshipSlot,
   validateLineup,
   type DisciplineLineup,
 } from "@/lib/disciplines/selection";
+import type { SignupClassLevel } from "@/lib/signin/signup-profile";
 import type { ChallengeCompletePayload, SubjectLevels } from "@/lib/types";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
@@ -27,13 +29,32 @@ interface AppState {
   leaderboardTab: "students" | "colleges";
   setLeaderboardTab: (tab: "students" | "colleges") => void;
   isSignedIn: boolean;
+  /** Supabase auth.users.id — same Student ID source as Edubite / EduBlast. */
+  userId: string | null;
+  /** Public Student ID from profiles.student_code (EB-26A0B0C1). */
+  studentCode: string | null;
+  /** EduDeca invite code from profiles.edudeca_referral_code (ED-267K2M9Q4A). */
+  referralCode: string | null;
+  /** Google / auth avatar URL (may fail to load — UI must fall back to initials). */
+  avatarUrl: string | null;
   phone: string | null;
   email: string | null;
   userName: string | null;
   hasHydrated: boolean;
   progressSynced: boolean;
   setHasHydrated: (value: boolean) => void;
-  signIn: (name: string, options?: { phone?: string | null; email?: string | null }) => void;
+  signIn: (
+    name: string,
+    options?: {
+      userId?: string | null;
+      studentCode?: string | null;
+      avatarUrl?: string | null;
+      phone?: string | null;
+      email?: string | null;
+    },
+  ) => void;
+  setStudentCode: (code: string | null) => void;
+  setReferralCode: (code: string | null) => void;
   signOut: () => void;
   campaignLevel: number;
   xp: number;
@@ -46,6 +67,19 @@ interface AppState {
   antiCaptureEnabled: boolean;
   disciplineLineup: DisciplineLineup;
   setDisciplineLineup: (lineup: DisciplineLineup) => void;
+  /** Pre-auth walkthrough: Class 11/12 (local until fill-if-empty profiles sync). */
+  signupClassLevel: SignupClassLevel | null;
+  setSignupClassLevel: (level: SignupClassLevel | null) => void;
+  /** Pre-auth walkthrough: college / school name (local until sync). */
+  signupCollege: string;
+  setSignupCollege: (college: string) => void;
+  /** Level-4 institution-approval acknowledgement (local gate only). */
+  signupInstitutionAck: boolean;
+  setSignupInstitutionAck: (acked: boolean) => void;
+  signupState: string;
+  setSignupState: (state: string) => void;
+  signupCity: string;
+  setSignupCity: (city: string) => void;
   setProctoredPaid: () => void;
   setAntiCaptureEnabled: (enabled: boolean) => void;
   /** Apply server progress snapshot (auth hydrate / admin API / complete). */
@@ -111,6 +145,10 @@ export const useAppStore = create<AppState>()(
       leaderboardTab: "students",
       setLeaderboardTab: (tab) => set({ leaderboardTab: tab }),
       isSignedIn: false,
+      userId: null,
+      studentCode: null,
+      referralCode: null,
+      avatarUrl: null,
       phone: null,
       email: null,
       userName: null,
@@ -120,15 +158,24 @@ export const useAppStore = create<AppState>()(
       signIn: (name, options) =>
         set({
           isSignedIn: true,
+          userId: options?.userId ?? null,
+          studentCode: options?.studentCode ?? null,
+          avatarUrl: options?.avatarUrl ?? null,
           userName: name.trim(),
           phone: options?.phone ?? null,
           email: options?.email ?? null,
           walkthroughStep: 1,
         }),
+      setStudentCode: (code) => set({ studentCode: code }),
+      setReferralCode: (code) => set({ referralCode: code }),
       signOut: () => {
         const defaults = defaultEduDecaProgress();
         set({
           isSignedIn: false,
+          userId: null,
+          studentCode: null,
+          referralCode: null,
+          avatarUrl: null,
           phone: null,
           email: null,
           userName: null,
@@ -136,6 +183,11 @@ export const useAppStore = create<AppState>()(
           ...progressSlice(defaults),
           progressSynced: false,
           disciplineLineup: emptyLineup(),
+          signupClassLevel: null,
+          signupCollege: "",
+          signupInstitutionAck: false,
+          signupState: "",
+          signupCity: "",
         });
       },
       campaignLevel: 1,
@@ -148,7 +200,22 @@ export const useAppStore = create<AppState>()(
       todayCompleted: false,
       antiCaptureEnabled: false,
       disciplineLineup: emptyLineup(),
-      setDisciplineLineup: (lineup) => set({ disciplineLineup: lineup }),
+      setDisciplineLineup: (lineup) =>
+        set({ disciplineLineup: lockEntrepreneurshipSlot(lineup) }),
+      signupClassLevel: null,
+      setSignupClassLevel: (level) => set({ signupClassLevel: level }),
+      signupCollege: "",
+      setSignupCollege: (college) => set({ signupCollege: college }),
+      signupInstitutionAck: false,
+      setSignupInstitutionAck: (acked) => set({ signupInstitutionAck: acked }),
+      signupState: "",
+      setSignupState: (state) =>
+        set((current) => ({
+          signupState: state,
+          signupCity: current.signupState === state ? current.signupCity : "",
+        })),
+      signupCity: "",
+      setSignupCity: (city) => set({ signupCity: city }),
       setProctoredPaid: () =>
         set({
           isProctoredPaid: true,
@@ -160,11 +227,12 @@ export const useAppStore = create<AppState>()(
         const fromServer = progress.disciplines
           ? validateLineup(progress.disciplines)
           : null;
-        if (fromServer) {
-          set({ ...patch, disciplineLineup: fromServer });
-          return;
-        }
-        set(patch);
+        set({
+          ...patch,
+          disciplineLineup: lockEntrepreneurshipSlot(
+            fromServer ?? get().disciplineLineup,
+          ),
+        });
       },
       skipDailyWait: () =>
         set(progressSlice(skipDailyWaitProgress(snapshotFromState(get())))),
@@ -195,6 +263,11 @@ export const useAppStore = create<AppState>()(
         todayCompleted: state.todayCompleted,
         antiCaptureEnabled: state.antiCaptureEnabled,
         disciplineLineup: state.disciplineLineup,
+        signupClassLevel: state.signupClassLevel,
+        signupCollege: state.signupCollege,
+        signupInstitutionAck: state.signupInstitutionAck,
+        signupState: state.signupState,
+        signupCity: state.signupCity,
       }),
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);
@@ -212,6 +285,7 @@ export const useAppStore = create<AppState>()(
         });
         state.todayCompleted = locked.todayCompleted;
         state.subjectLevels = locked.subjectLevels;
+        state.disciplineLineup = lockEntrepreneurshipSlot(state.disciplineLineup);
       },
     }
   )
@@ -250,7 +324,7 @@ export function useSubjectsWithProgress() {
     ? selectedIds
         .map((id) => subjects.find((s) => s.id === id))
         .filter((s): s is (typeof subjects)[number] => Boolean(s))
-    : subjects.slice(0, 10);
+    : subjects.filter((s) => s.id !== "cs").slice(0, 10);
 
   return catalog.map((s) => ({
     ...s,

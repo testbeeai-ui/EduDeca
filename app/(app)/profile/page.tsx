@@ -1,29 +1,37 @@
 "use client";
 
 import { CameraOff, LogOut, Mail, School, Settings, Shield } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { GlassCard } from "@/components/common/glass-card";
 import { MotionFade } from "@/components/common/motion-fade";
 import { TesterToolsPanel } from "@/components/profile/tester-tools-panel";
 import { PageHeader } from "@/components/shell/page-header";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { currentUser } from "@/data/user";
 import { isTesterInvestorEmail } from "@/lib/admin/tester-allowlist";
+import { formatStudentId } from "@/lib/identity/student-id";
 import { patchAntiCapture } from "@/lib/progress/client";
+import { formatSignupClassLabel } from "@/lib/signin/signup-profile";
 import { supabase } from "@/lib/supabase/client";
 import { cn, formatXp, initialsFromName } from "@/lib/utils";
 import { useAppStore, useProgressUser } from "@/store/useAppStore";
 
 export default function ProfilePage() {
   const router = useRouter();
+  const avatarUrl = useAppStore((s) => s.avatarUrl);
   const email = useAppStore((s) => s.email);
   const phone = useAppStore((s) => s.phone);
   const userName = useAppStore((s) => s.userName);
   const isSignedIn = useAppStore((s) => s.isSignedIn);
+  const studentCode = useAppStore((s) => s.studentCode);
+  const studentId = formatStudentId(studentCode);
+  const signupClassLevel = useAppStore((s) => s.signupClassLevel);
+  const signupCollege = useAppStore((s) => s.signupCollege);
   const signOut = useAppStore((s) => s.signOut);
   const antiCaptureEnabled = useAppStore((s) => s.antiCaptureEnabled);
   const setAntiCaptureEnabled = useAppStore((s) => s.setAntiCaptureEnabled);
@@ -32,6 +40,8 @@ export default function ProfilePage() {
   const displayName = userName ?? currentUser.name;
   const displayInitials = userName ? initialsFromName(userName) : currentUser.initials;
   const isAdmin = isTesterInvestorEmail(email);
+  const classLabel = formatSignupClassLabel(signupClassLevel) ?? currentUser.grade;
+  const collegeLabel = signupCollege.trim() || currentUser.school;
 
   const handleAntiCaptureChange = (enabled: boolean) => {
     setAntiCaptureEnabled(enabled);
@@ -43,7 +53,7 @@ export default function ProfilePage() {
   const handleLogout = async () => {
     signOut();
     await supabase.auth.signOut({ scope: "local" });
-    router.replace("/signin");
+    router.replace("/home");
   };
 
   return (
@@ -56,6 +66,7 @@ export default function ProfilePage() {
         <GlassCard className="space-y-6">
           <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
             <Avatar className="size-16">
+              {avatarUrl ? <AvatarImage src={avatarUrl} alt="" className="object-cover" /> : null}
               <AvatarFallback className={cn("text-xl font-semibold text-white", currentUser.avatarColor)}>
                 {displayInitials}
               </AvatarFallback>
@@ -63,12 +74,22 @@ export default function ProfilePage() {
             <div className="min-w-0">
               <h2 className="text-xl font-bold">{displayName}</h2>
               <p className="text-sm text-muted-foreground">
-                {currentUser.grade} · {currentUser.school}
+                {classLabel} · {collegeLabel}
               </p>
             </div>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
+            {studentId ? (
+              <div className="rounded-xl border border-border/60 bg-muted/20 px-4 py-3 sm:col-span-2">
+                <p className="m-0 truncate text-sm font-semibold sm:text-base">
+                  Student ID:{" "}
+                  <span className="font-mono font-bold tracking-wide">
+                    {studentId}
+                  </span>
+                </p>
+              </div>
+            ) : null}
             <div className="rounded-xl border border-border/60 bg-muted/20 p-4">
               <div className="mb-2 flex items-center gap-2 text-muted-foreground">
                 <Mail className="size-4" />
@@ -83,7 +104,7 @@ export default function ProfilePage() {
                 <School className="size-4" />
                 <span className="text-xs uppercase tracking-wide">School</span>
               </div>
-              <p className="font-medium">{currentUser.school}</p>
+              <p className="font-medium">{collegeLabel}</p>
             </div>
             <div className="rounded-xl border border-border/60 bg-muted/20 p-4">
               <div className="mb-2 flex items-center gap-2 text-muted-foreground">
@@ -103,6 +124,18 @@ export default function ProfilePage() {
           </div>
 
           <TesterToolsPanel />
+
+          {isAdmin ? (
+            <div className="rounded-xl border border-border/60 bg-muted/20 p-4">
+              <p className="text-sm font-medium">Admin console</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Verify college registrations from the dedicated admin workspace.
+              </p>
+              <Button asChild size="sm" className="mt-3">
+                <Link href="/admin">Open admin console</Link>
+              </Button>
+            </div>
+          ) : null}
 
           {isAdmin ? (
             <div className="space-y-3">

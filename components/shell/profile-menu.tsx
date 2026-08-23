@@ -6,9 +6,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { currentUser } from "@/data/user";
 import { springSnappy } from "@/lib/motion";
+import { formatSignupClassLabel } from "@/lib/signin/signup-profile";
 import { supabase } from "@/lib/supabase/client";
 import { cn, initialsFromName } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
@@ -21,8 +22,14 @@ export function ProfileMenu() {
   const email = useAppStore((s) => s.email);
   const phone = useAppStore((s) => s.phone);
   const userName = useAppStore((s) => s.userName);
+  const avatarUrl = useAppStore((s) => s.avatarUrl);
+  const signupClassLevel = useAppStore((s) => s.signupClassLevel);
+  const signupCollege = useAppStore((s) => s.signupCollege);
   const displayName = userName ?? currentUser.name;
   const displayInitials = userName ? initialsFromName(userName) : currentUser.initials;
+  const classLabel = formatSignupClassLabel(signupClassLevel) ?? currentUser.grade;
+  const collegeLabel = signupCollege.trim() || currentUser.school;
+  const subtitleFallback = `${classLabel} · ${collegeLabel}`;
 
   useEffect(() => {
     function onClickOutside(event: MouseEvent) {
@@ -47,7 +54,7 @@ export function ProfileMenu() {
     setOpen(false);
     signOut();
     await supabase.auth.signOut({ scope: "local" });
-    router.replace("/signin");
+    router.replace("/home");
   };
 
   return (
@@ -95,6 +102,7 @@ export function ProfileMenu() {
         )}
       >
         <Avatar className="size-9 shrink-0">
+          {avatarUrl ? <AvatarImage src={avatarUrl} alt="" className="object-cover" /> : null}
           <AvatarFallback className={cn("text-sm font-semibold text-white", currentUser.avatarColor)}>
             {displayInitials}
           </AvatarFallback>
@@ -102,7 +110,7 @@ export function ProfileMenu() {
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">{displayName}</p>
           <p className="truncate text-xs text-muted-foreground">
-            {email ?? (phone ? `+91 ${phone}` : `${currentUser.grade} · ${currentUser.school}`)}
+            {email ?? (phone ? `+91 ${phone}` : subtitleFallback)}
           </p>
         </div>
         <motion.span animate={{ rotate: open ? 0 : 180 }} transition={springSnappy}>

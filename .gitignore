@@ -31,6 +31,9 @@ yarn-error.log*
 # env files
 .env*
 
+# local college uploads only (applications/roster live in Supabase)
+/data/college-uploads/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

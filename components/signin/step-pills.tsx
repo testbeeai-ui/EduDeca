@@ -12,19 +12,21 @@ interface StepPillsProps {
 
 export function StepPills({ steps, currentStep, onStepClick }: StepPillsProps) {
   return (
-    <div className="flex min-w-max flex-nowrap items-center justify-start gap-2 px-1 sm:min-w-0 sm:flex-wrap sm:justify-center">
-      {steps.map((step) => (
-        <button
-          key={step.id}
-          type="button"
-          onClick={() => onStepClick?.(step.id)}
-          className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-full"
-        >
-          <BadgePill accent={step.accent} active={step.id <= currentStep} className="whitespace-nowrap">
-            {step.pillLabel}
-          </BadgePill>
-        </button>
-      ))}
+    <div className="overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="mx-auto flex w-max max-w-full flex-nowrap items-center justify-center gap-2 px-1">
+        {steps.map((step) => (
+          <button
+            key={step.id}
+            type="button"
+            onClick={() => onStepClick?.(step.id)}
+            className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <BadgePill accent={step.accent} active={step.id <= currentStep} className="whitespace-nowrap">
+              {step.pillLabel}
+            </BadgePill>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

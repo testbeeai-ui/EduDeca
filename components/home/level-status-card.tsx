@@ -1,6 +1,6 @@
 "use client";
 
-import { Flame, Medal, Sparkles } from "lucide-react";
+import { Medal, Sparkles } from "lucide-react";
 
 import type { UserProfile } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -93,11 +93,6 @@ export function LevelStatusCard({ user, className }: LevelStatusCardProps) {
           </div>
           
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
-            <span className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-1 text-amber-300 font-medium">
-              <Flame className="size-4 text-amber-400 fill-amber-400/30" />
-              {user.streakDays} day streak
-            </span>
-
             <span className="inline-flex items-center gap-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 px-3 py-1 text-cyan-300 font-medium">
               <Medal className="size-4 text-cyan-400" />
               Rank #{user.rank.toLocaleString()}
