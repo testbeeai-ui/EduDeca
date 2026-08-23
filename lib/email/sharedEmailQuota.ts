@@ -5,12 +5,14 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
   getEmailDailySendCap,
   getIstCalendarDateIso,
+  resolveSharedEmailQuotaCounts,
 } from "@/lib/email/emailDailyCap";
 
 export {
   DEFAULT_EMAIL_DAILY_SEND_CAP,
   getEmailDailySendCap,
   getIstCalendarDateIso,
+  resolveSharedEmailQuotaCounts,
 } from "@/lib/email/emailDailyCap";
 
 export type SharedEmailQuota = {
@@ -36,11 +38,12 @@ export function createEmailAdminClient(): SupabaseClient | null {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
+/** `null` = count unknown (fail closed — do not treat as zero sent). */
 export async function countSentEmailsForIstDate(
   istDate: string,
-): Promise<number> {
+): Promise<number | null> {
   const admin = createEmailAdminClient();
-  if (!admin) return 0;
+  if (!admin) return null;
 
   const { count, error } = await admin
     .from("transactional_email_logs")
@@ -50,7 +53,7 @@ export async function countSentEmailsForIstDate(
 
   if (error) {
     console.warn("[email-quota] count failed:", error.message);
-    return 0;
+    return null;
   }
   return count ?? 0;
 }
@@ -63,9 +66,8 @@ export async function getSharedEmailQuota(
   const sentToday = await countSentEmailsForIstDate(istDate);
   return {
     dailyLimit,
-    sentToday,
-    remainingToday: Math.max(0, dailyLimit - sentToday),
     istDate,
+    ...resolveSharedEmailQuotaCounts(dailyLimit, sentToday),
   };
 }
 
@@ -73,9 +75,14 @@ export async function getSharedEmailQuota(
 export async function checkSharedEmailDailyCap(
   nowMs = Date.now(),
 ): Promise<string | null> {
-  const q = await getSharedEmailQuota(nowMs);
-  if (q.sentToday >= q.dailyLimit) {
-    return `Daily email cap reached (${q.sentToday}/${q.dailyLimit} sent today IST). Shared across EduBlast + EduDeca.`;
+  const dailyLimit = getEmailDailySendCap();
+  const istDate = getIstCalendarDateIso(nowMs);
+  const sentToday = await countSentEmailsForIstDate(istDate);
+  if (sentToday === null) {
+    return "Shared email quota unavailable — cannot verify the daily cap (transactional_email_logs). Check SUPABASE_SERVICE_ROLE_KEY.";
+  }
+  if (sentToday >= dailyLimit) {
+    return `Daily email cap reached (${sentToday}/${dailyLimit} sent today IST). Shared across EduBlast + EduDeca.`;
   }
   return null;
 }

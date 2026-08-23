@@ -5,6 +5,7 @@ import {
   DEFAULT_EMAIL_DAILY_SEND_CAP,
   getEmailDailySendCap,
   getIstCalendarDateIso,
+  resolveSharedEmailQuotaCounts,
 } from "./emailDailyCap";
 
 describe("getEmailDailySendCap", () => {
@@ -35,5 +36,21 @@ describe("getEmailDailySendCap", () => {
 describe("getIstCalendarDateIso", () => {
   it("returns YYYY-MM-DD", () => {
     assert.match(getIstCalendarDateIso(), /^\d{4}-\d{2}-\d{2}$/);
+  });
+});
+
+describe("resolveSharedEmailQuotaCounts", () => {
+  it("fail-closes when the sent count is unknown", () => {
+    assert.deepEqual(resolveSharedEmailQuotaCounts(500, null), {
+      sentToday: 500,
+      remainingToday: 0,
+    });
+  });
+
+  it("computes remaining when the sent count is known", () => {
+    assert.deepEqual(resolveSharedEmailQuotaCounts(500, 12), {
+      sentToday: 12,
+      remainingToday: 488,
+    });
   });
 });

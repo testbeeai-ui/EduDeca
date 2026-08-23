@@ -15,3 +15,20 @@ export function getIstCalendarDateIso(nowMs = Date.now()): string {
     new Date(nowMs),
   );
 }
+
+/**
+ * Fail-closed quota math: an unknown sent count consumes the entire daily budget
+ * so callers cannot send while transactional_email_logs is unreadable.
+ */
+export function resolveSharedEmailQuotaCounts(
+  dailyLimit: number,
+  sentToday: number | null,
+): { sentToday: number; remainingToday: number } {
+  if (sentToday === null) {
+    return { sentToday: dailyLimit, remainingToday: 0 };
+  }
+  return {
+    sentToday,
+    remainingToday: Math.max(0, dailyLimit - sentToday),
+  };
+}

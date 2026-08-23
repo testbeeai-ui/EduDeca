@@ -87,19 +87,3 @@ export function clearCollegeRegistrationDraft(): void {
     /* ignore */
   }
 }
-
-export function hasCollegeRegistrationDraft(): boolean {
-  if (typeof window === "undefined") return false;
-  try {
-    const draft = readCollegeRegistrationDraft();
-    if (!draft) return false;
-    return Boolean(
-      draft.institutionName.trim() ||
-        draft.principalName.trim() ||
-        draft.contactName.trim() ||
-        draft.principalEmail.trim(),
-    );
-  } catch {
-    return false;
-  }
-}
