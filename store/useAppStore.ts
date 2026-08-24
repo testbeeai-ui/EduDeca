@@ -56,6 +56,8 @@ interface AppState {
   setStudentCode: (code: string | null) => void;
   setReferralCode: (code: string | null) => void;
   signOut: () => void;
+  /** Wipe walkthrough/signup drafts so a new Google account cannot inherit another device user's local form. */
+  resetOnboardingDraft: () => void;
   campaignLevel: number;
   xp: number;
   streakDays: number;
@@ -168,6 +170,52 @@ export const useAppStore = create<AppState>()(
         }),
       setStudentCode: (code) => set({ studentCode: code }),
       setReferralCode: (code) => set({ referralCode: code }),
+      resetOnboardingDraft: () => {
+        const defaults = defaultEduDecaProgress();
+        const draft = {
+          walkthroughStep: 1,
+          ...progressSlice(defaults),
+          progressSynced: false as const,
+          disciplineLineup: emptyLineup(),
+          signupClassLevel: null as SignupClassLevel | null,
+          signupCollege: "",
+          signupInstitutionAck: false,
+          signupState: "",
+          signupCity: "",
+        };
+        set(draft);
+        // Persist immediately so a same-tick OAuth redirect cannot revive a prior walkthrough.
+        if (typeof window !== "undefined") {
+          try {
+            const key = "edudeca-app";
+            const raw = window.localStorage.getItem(key);
+            const parsed = raw
+              ? (JSON.parse(raw) as { state?: Record<string, unknown>; version?: number })
+              : { state: {}, version: 0 };
+            parsed.state = {
+              ...(parsed.state ?? {}),
+              campaignLevel: draft.campaignLevel,
+              xp: draft.xp,
+              streakDays: draft.streakDays,
+              subjectLevels: draft.subjectLevels,
+              isProctoredPaid: draft.isProctoredPaid,
+              freeZoneComplete: draft.freeZoneComplete,
+              lastChallengeDate: draft.lastChallengeDate,
+              todayCompleted: draft.todayCompleted,
+              antiCaptureEnabled: draft.antiCaptureEnabled,
+              disciplineLineup: draft.disciplineLineup,
+              signupClassLevel: draft.signupClassLevel,
+              signupCollege: draft.signupCollege,
+              signupInstitutionAck: draft.signupInstitutionAck,
+              signupState: draft.signupState,
+              signupCity: draft.signupCity,
+            };
+            window.localStorage.setItem(key, JSON.stringify(parsed));
+          } catch {
+            /* ignore storage failures */
+          }
+        }
+      },
       signOut: () => {
         const defaults = defaultEduDecaProgress();
         set({

@@ -6,7 +6,6 @@ import {
   AUTH_NEXT_COOKIE,
   isEduDecaStudentEstablished,
   LOGIN_MODE_COOKIE,
-  LOGIN_MODE_RETURNING,
 } from "@/lib/signin/returning-login";
 
 type PendingCookie = { name: string; value: string; options?: CookieOptions };
@@ -20,7 +19,6 @@ type PendingCookie = { name: string; value: string; options?: CookieOptions };
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
-  const loginMode = request.cookies.get(LOGIN_MODE_COOKIE)?.value ?? "";
 
   const nextCookieRaw = request.cookies.get(AUTH_NEXT_COOKIE)?.value;
   const nextParam = url.searchParams.get("next");
@@ -128,7 +126,9 @@ export async function GET(request: NextRequest) {
         safeNext = "/college/portal";
       } else if (app?.status === "pending" || app?.status === "rejected") {
         safeNext = "/college/pending";
-      } else if (loginMode === LOGIN_MODE_RETURNING && !safeNext.startsWith("/college/")) {
+      } else if (!safeNext.startsWith("/college/")) {
+        // Any Google sign-in into the student app: brand-new Auth users with no
+        // EduDeca profile/progress must finish the walkthrough details first.
         const { data: profile } = await supabase
           .from("edudeca_profiles")
           .select("class_level, institution_name")

@@ -121,14 +121,17 @@ export function GoogleSignInForm({ title, description }: GoogleSignInFormProps) 
         return;
       }
 
+      // Persist walkthrough answers before OAuth so AuthGate does not see an
+      // empty server profile and bounce the user back to /signin forever.
+      await syncSignupProfileFromLocal();
+      const ids = lineupIds(disciplineLineup);
+      const synced = await patchDisciplines(ids);
+      if (synced) useAppStore.getState().hydrateProgress(synced);
+
       // Already signed in (e.g. returned from “Log in with Google” as a new account)
       // — save walkthrough answers and go home without another OAuth round-trip.
       const { data: sessionData } = await supabase.auth.getSession();
       if (sessionData.session?.user) {
-        await syncSignupProfileFromLocal();
-        const ids = lineupIds(disciplineLineup);
-        const synced = await patchDisciplines(ids);
-        if (synced) useAppStore.getState().hydrateProgress(synced);
         window.location.href = "/home";
         return;
       }

@@ -17,6 +17,37 @@ function asText(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function formatSupabaseError(error: {
+  message?: string;
+  code?: string;
+  details?: string;
+  hint?: string;
+  status?: number;
+}): string {
+  return [
+    error.message || "(no message)",
+    error.code ? `code=${error.code}` : null,
+    error.status != null ? `status=${error.status}` : null,
+    error.details ? `details=${error.details}` : null,
+    error.hint ? `hint=${error.hint}` : null,
+  ]
+    .filter(Boolean)
+    .join(" | ");
+}
+
+function isAuthSessionError(error: { message?: string; code?: string; status?: number }): boolean {
+  const msg = (error.message || "").toLowerCase();
+  const code = (error.code || "").toLowerCase();
+  if (error.status === 401 || error.status === 403) return true;
+  if (code.includes("pgrst301") || code === "401" || code === "403") return true;
+  return (
+    msg.includes("jwt") ||
+    msg.includes("not authenticated") ||
+    msg.includes("session") ||
+    msg.includes("unauthorized")
+  );
+}
+
 /**
  * After Google auth: write local class/college/location to edudeca_profiles
  * without overwriting existing non-empty values, and hydrate the local store
@@ -24,8 +55,30 @@ function asText(value: unknown): string {
  */
 export async function syncSignupProfileFromLocal(): Promise<void> {
   const store = useAppStore.getState();
-  const userId = store.userId;
-  if (!userId) return;
+
+  // Prefer live auth session over persisted store userId (avoids stale-id races).
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  if (authError) {
+    if (isAuthSessionError(authError)) return;
+    console.warn(
+      "[signup-profile] getUser failed",
+      formatSupabaseError(authError),
+    );
+    return;
+  }
+
+  const user = authData.user;
+  if (!user?.id) return;
+
+  // Store may still be catching up after OAuth; align if needed.
+  if (store.userId && store.userId !== user.id) {
+    console.warn("[signup-profile] store userId mismatch; using auth user", {
+      storeUserId: store.userId,
+      authUserId: user.id,
+    });
+  }
+
+  const userId = user.id;
 
   const { data, error } = await supabase
     .from("edudeca_profiles")
@@ -34,7 +87,14 @@ export async function syncSignupProfileFromLocal(): Promise<void> {
     .maybeSingle();
 
   if (error) {
-    console.error("[signup-profile] edudeca_profiles select failed", error);
+    if (isAuthSessionError(error)) {
+      // Common during cookie/session settle right after OAuth — not actionable noise.
+      return;
+    }
+    console.error(
+      "[signup-profile] edudeca_profiles select failed",
+      formatSupabaseError(error),
+    );
     return;
   }
 
@@ -77,9 +137,7 @@ export async function syncSignupProfileFromLocal(): Promise<void> {
       )
     : null;
 
-  const { data: authData } = await supabase.auth.getUser();
-  if (authData.user?.id !== userId) return;
-  const sessionEmail = authData.user.email?.trim() ?? "";
+  const sessionEmail = user.email?.trim() ?? "";
   const writeEmail = shouldWriteEduDecaEmail(existing.email) && sessionEmail.length > 0;
 
   if (!patch && !writeEmail) return;
@@ -94,6 +152,10 @@ export async function syncSignupProfileFromLocal(): Promise<void> {
   );
 
   if (upsertError) {
-    console.error("[signup-profile] edudeca_profiles upsert failed", upsertError);
+    if (isAuthSessionError(upsertError)) return;
+    console.error(
+      "[signup-profile] edudeca_profiles upsert failed",
+      formatSupabaseError(upsertError),
+    );
   }
 }

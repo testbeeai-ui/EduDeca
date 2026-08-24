@@ -8,7 +8,11 @@ import { isLineupComplete, lineupIds, lineupIdsMatch } from "@/lib/disciplines/s
 import { isTesterInvestorEmail } from "@/lib/admin/tester-allowlist";
 import { fetchServerProgress, patchDisciplines } from "@/lib/progress/client";
 import { EDUDECA_PENDING_REFERRER_KEY } from "@/lib/referral/referral-code";
-import { isEduDecaStudentEstablished } from "@/lib/signin/returning-login";
+import {
+  isEduDecaStudentEstablished,
+  type EduDecaEstablishedSnapshot,
+} from "@/lib/signin/returning-login";
+import { isSignupClassCollegeReady } from "@/lib/signin/signup-profile";
 import { syncSignupProfileFromLocal } from "@/lib/signin/sync-signup-profile";
 import { supabase } from "@/lib/supabase/client";
 import { useAppStore } from "@/store/useAppStore";
@@ -29,6 +33,15 @@ const STUDENT_APP_PATHS = new Set([
   "/profile",
   "/challenge",
   "/signin",
+]);
+/** Signed-in students with no onboarding must finish /signin before these. */
+const STUDENT_ONBOARDING_REQUIRED_PATHS = new Set([
+  "/home",
+  "/levels",
+  "/leaderboard",
+  "/rewards",
+  "/profile",
+  "/challenge",
 ]);
 const GET_SESSION_TIMEOUT_MS = 4000;
 
@@ -133,6 +146,35 @@ function applyUserToStore(user: User | null) {
   }
 }
 
+async function fetchServerEstablishedSnapshot(
+  userId: string,
+): Promise<EduDecaEstablishedSnapshot> {
+  const [{ data: profile }, progress] = await Promise.all([
+    supabase
+      .from("edudeca_profiles")
+      .select("class_level, institution_name")
+      .eq("id", userId)
+      .maybeSingle(),
+    fetchServerProgress(),
+  ]);
+
+  return {
+    classLevel:
+      profile && typeof profile.class_level === "number" ? profile.class_level : null,
+    institutionName:
+      profile && typeof profile.institution_name === "string"
+        ? profile.institution_name
+        : null,
+    disciplines: progress?.disciplines ?? null,
+    xp: progress?.xp ?? 0,
+    campaignLevel: progress?.campaignLevel ?? 1,
+  };
+}
+
+/**
+ * Hydrate from server. Only push a local 10-discipline lineup when class+college
+ * are also ready — never promote a brand-new Google user from stale localStorage alone.
+ */
 async function syncProgressFromServer() {
   const progress = await fetchServerProgress();
   if (!progress) return;
@@ -142,12 +184,34 @@ async function syncProgressFromServer() {
 
   const lineup = store.disciplineLineup;
   if (!isLineupComplete(lineup)) return;
+  if (!isSignupClassCollegeReady(store.signupClassLevel, store.signupCollege)) {
+    return;
+  }
 
   const ids = lineupIds(lineup);
   if (!lineupIdsMatch(progress.disciplines, ids)) {
     const synced = await patchDisciplines(ids);
     if (synced) store.hydrateProgress(synced);
   }
+}
+
+/** After OAuth signup: local walkthrough draft may still be the only copy of details. */
+async function finishOnboardingFromLocalDraftIfReady(): Promise<boolean> {
+  const store = useAppStore.getState();
+  if (!isSignupClassCollegeReady(store.signupClassLevel, store.signupCollege)) {
+    return false;
+  }
+  if (!isLineupComplete(store.disciplineLineup)) return false;
+
+  await syncSignupProfileFromLocal();
+  const ids = lineupIds(store.disciplineLineup);
+  const synced = await patchDisciplines(ids);
+  if (synced) useAppStore.getState().hydrateProgress(synced);
+
+  const userId = useAppStore.getState().userId;
+  if (!userId) return false;
+  const snap = await fetchServerEstablishedSnapshot(userId);
+  return isEduDecaStudentEstablished(snap);
 }
 
 export function AuthGate({ children }: { children: React.ReactNode }) {
@@ -179,7 +243,6 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
         applyUserToStore(data.session?.user ?? null);
         if (data.session?.user) {
           await syncProgressFromServer();
-          await syncSignupProfileFromLocal();
           await syncCollegeRosterBestEffort();
         }
         finish();
@@ -195,12 +258,12 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       applyUserToStore(session?.user ?? null);
-      if (session?.user) {
+      // Cold start is handled by getSession above. Only re-sync on fresh sign-in.
+      if (session?.user && event === "SIGNED_IN") {
         void (async () => {
           await syncProgressFromServer();
-          await syncSignupProfileFromLocal();
           await syncCollegeRosterBestEffort();
         })();
       }
@@ -274,21 +337,34 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
         router.replace(COLLEGE_SIGNIN_PATH);
         return;
       }
-      if (pathname === "/signin") {
-        const store = useAppStore.getState();
-        const disciplines = isLineupComplete(store.disciplineLineup)
-          ? lineupIds(store.disciplineLineup)
-          : [];
-        const established = isEduDecaStudentEstablished({
-          classLevel: store.signupClassLevel,
-          institutionName: store.signupCollege,
-          disciplines,
-          xp: store.xp,
-          campaignLevel: store.campaignLevel,
-        });
-        if (established) {
-          router.replace("/home");
+
+      const userId = useAppStore.getState().userId;
+      if (!userId) return;
+
+      let snap = await fetchServerEstablishedSnapshot(userId);
+      if (cancelled) return;
+
+      if (!isEduDecaStudentEstablished(snap)) {
+        // Signup OAuth: walkthrough answers still live in localStorage — flush them.
+        const finished = await finishOnboardingFromLocalDraftIfReady();
+        if (cancelled) return;
+        if (finished) {
+          snap = await fetchServerEstablishedSnapshot(userId);
         }
+      } else {
+        // Established: hydrate local signup fields from server (fill-if-empty only).
+        await syncSignupProfileFromLocal();
+      }
+
+      const established = isEduDecaStudentEstablished(snap);
+
+      if (!established && STUDENT_ONBOARDING_REQUIRED_PATHS.has(pathname)) {
+        router.replace("/signin?auth_notice=new_account");
+        return;
+      }
+
+      if (pathname === "/signin" && established) {
+        router.replace("/home");
       }
     })();
 
@@ -315,6 +391,8 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     const disciplines = isLineupComplete(store.disciplineLineup)
       ? lineupIds(store.disciplineLineup)
       : [];
+    // Prefer not to blank the walkthrough UI while server established is still resolving;
+    // only hide when local already looks established (returning users).
     const established = isEduDecaStudentEstablished({
       classLevel: store.signupClassLevel,
       institutionName: store.signupCollege,

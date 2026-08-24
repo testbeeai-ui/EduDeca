@@ -9,6 +9,7 @@ import {
 } from "@/lib/signin/returning-login";
 import { supabase } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+import { useAppStore } from "@/store/useAppStore";
 
 function GoogleMark({ className }: { className?: string }) {
   return (
@@ -57,6 +58,10 @@ export function ReturningUserLogin({
 
       document.cookie = `${AUTH_NEXT_COOKIE}=${encodeURIComponent("/home")}; path=/; max-age=600; SameSite=Lax`;
       document.cookie = `${LOGIN_MODE_COOKIE}=${LOGIN_MODE_RETURNING}; path=/; max-age=600; SameSite=Lax`;
+
+      // Do not let a previous walkthrough on this browser mark a brand-new Google
+      // account as "established" or upsert leftover class/college into their profile.
+      useAppStore.getState().resetOnboardingDraft();
 
       const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: "google",

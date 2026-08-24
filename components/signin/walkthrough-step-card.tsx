@@ -53,16 +53,18 @@ export function WalkthroughStepCard({
   const [gateHint, setGateHint] = useState<string | null>(null);
 
   // Google is step 7 — never allow it until the Decathlon lineup is complete.
-  useEffect(() => {
-    if (currentStep === WALKTHROUGH_SIGN_IN_STEP && !lineupReady) {
-      setWalkthroughStep(WALKTHROUGH_DISCIPLINES_STEP);
-      setGateHint("Pick your 10 disciplines before continuing with Google.");
-    }
-  }, [currentStep, lineupReady, setWalkthroughStep]);
+  const blockedOnSignIn =
+    currentStep === WALKTHROUGH_SIGN_IN_STEP && !lineupReady;
+  const derivedGateHint = blockedOnSignIn
+    ? "Pick your 10 disciplines before continuing with Google."
+    : lineupReady
+      ? null
+      : gateHint;
 
   useEffect(() => {
-    if (lineupReady) setGateHint(null);
-  }, [lineupReady]);
+    if (!blockedOnSignIn) return;
+    setWalkthroughStep(WALKTHROUGH_DISCIPLINES_STEP);
+  }, [blockedOnSignIn, setWalkthroughStep]);
 
   if (!step) return null;
 
@@ -123,9 +125,9 @@ export function WalkthroughStepCard({
         </div>
       ) : null}
 
-      {gateHint ? (
+      {derivedGateHint ? (
         <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-center text-xs font-medium text-amber-200">
-          {gateHint}
+          {derivedGateHint}
         </p>
       ) : null}
 
