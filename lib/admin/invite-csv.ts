@@ -51,7 +51,7 @@ export function parseStudentCsv(
   let classIdx = headers.findIndex((h) =>
     /class|grade|level|standard|std|class_level/.test(h),
   );
-  let collegeIdx = headers.findIndex((h) =>
+  const collegeIdx = headers.findIndex((h) =>
     /college|institution|school|college_name/.test(h),
   );
 

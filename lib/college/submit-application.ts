@@ -1,4 +1,5 @@
 import type { CollegeRegistrationDraft } from "@/lib/college/registration";
+import { clearCollegeRegistrationDraft } from "@/lib/college/registration";
 import { clearStagedCollegeUploads, stagedUploadsToFiles } from "@/lib/college/pending-upload-files";
 
 /** Submit college application JSON + optional staged XI/XII files. */
@@ -23,5 +24,6 @@ export async function submitCollegeApplicationWithUploads(
   }
 
   await clearStagedCollegeUploads();
+  clearCollegeRegistrationDraft();
   return { ok: true };
 }

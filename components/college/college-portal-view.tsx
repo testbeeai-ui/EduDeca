@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import styles from "@/components/college/college-portal.module.css";
+import { clearCollegeRegistrationDraft } from "@/lib/college/registration";
 import { supabase } from "@/lib/supabase/client";
 import { initialsFromName } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
@@ -162,9 +163,10 @@ export function CollegePortalView() {
   }, [data, filter, query]);
 
   const handleSignOut = async () => {
+    clearCollegeRegistrationDraft();
     signOut();
     await supabase.auth.signOut({ scope: "local" });
-    window.location.href = "/college/signin";
+    window.location.href = "/home";
   };
 
   const exportCsv = () => {
@@ -325,35 +327,38 @@ export function CollegePortalView() {
             <input
               id="college-student-search"
               type="text"
-              placeholder="Search by student name or roll number..."
+              placeholder="Search name or roll…"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
           </div>
-          {(
-            [
-              ["all", "All students"],
-              ["xi", "Class XI"],
-              ["xii", "Class XII"],
-              ["fees", "Fees pending"],
-            ] as const
-          ).map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              className={`${styles.filterChip} ${filter === id ? styles.filterChipActive : ""}`}
-              aria-pressed={filter === id}
-              onClick={() => setFilter(id)}
-            >
-              {label}
+
+          <div className={styles.controlsActions}>
+            <div className={styles.filterGroup} role="group" aria-label="Filter students">
+              {(
+                [
+                  ["all", "All", "All students"],
+                  ["xi", "XI", "Class XI"],
+                  ["xii", "XII", "Class XII"],
+                  ["fees", "Fees due", "Fees pending"],
+                ] as const
+              ).map(([id, shortLabel, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  className={`${styles.filterChip} ${filter === id ? styles.filterChipActive : ""}`}
+                  aria-pressed={filter === id}
+                  onClick={() => setFilter(id)}
+                >
+                  <span className={styles.filterChipFull}>{label}</span>
+                  <span className={styles.filterChipShort}>{shortLabel}</span>
+                </button>
+              ))}
+            </div>
+            <button type="button" className={styles.primaryBtn} onClick={exportCsv}>
+              Export CSV
             </button>
-          ))}
-          <button type="button" className={styles.ghostBtn} disabled title="Coming soon">
-            ⬆ Upload data
-          </button>
-          <button type="button" className={styles.primaryBtn} onClick={exportCsv}>
-            ⬇ Export CSV
-          </button>
+          </div>
         </div>
 
         <div className={styles.tableCard}>
@@ -476,7 +481,7 @@ export function CollegePortalView() {
             <span>
               Showing <b>{filtered.length}</b> of <b>{data.students.length}</b> students
             </span>
-            <span>Matched by institution name from student EduDeca profiles</span>
+            <span>Matched by institution name and location from student EduDeca profiles</span>
           </div>
         </div>
       </div>

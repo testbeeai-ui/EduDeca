@@ -23,13 +23,13 @@ function useNextChallengeCountdown(enabled: boolean) {
 
   useEffect(() => {
     if (!enabled) return;
-    setMsLeft(msUntilNextIstMidnight());
     const id = window.setInterval(() => {
       setMsLeft(msUntilNextIstMidnight());
     }, 1000);
     return () => window.clearInterval(id);
   }, [enabled]);
 
+  if (!enabled) return 0;
   return msLeft;
 }
 

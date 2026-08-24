@@ -1,14 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import styles from "@/components/college/college-registration.module.css";
 import { stageCollegeUploadFile } from "@/lib/college/pending-upload-files";
 import {
   AUTH_NEXT_COOKIE,
+  clearCollegeRegistrationDraft,
   emptyCollegeRegistrationDraft,
+  hasCollegeRegistrationDraft,
   isCollegeRegistrationReady,
   readCollegeRegistrationDraft,
   writeCollegeRegistrationDraft,
@@ -64,9 +66,13 @@ function SectionNum({
 }
 
 export function CollegeRegistrationForm() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [draft, setDraft] = useState<CollegeRegistrationDraft>(emptyCollegeRegistrationDraft);
   const [hydrated, setHydrated] = useState(false);
+  const [persistDraft, setPersistDraft] = useState(false);
+  const [routeChecking, setRouteChecking] = useState(true);
+  const [hasSavedDraft, setHasSavedDraft] = useState(false);
   const [signingIn, setSigningIn] = useState(false);
   const [showReqNote, setShowReqNote] = useState(false);
   const [error, setError] = useState<string | null>(() => {
@@ -77,25 +83,89 @@ export function CollegeRegistrationForm() {
     return null;
   });
 
+  // If already signed in with a college application, leave registration — don't show a stale form.
   useEffect(() => {
-    const saved = readCollegeRegistrationDraft();
-    if (saved) setDraft(saved);
-    setHydrated(true);
-  }, []);
+    let cancelled = false;
+    void (async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (!data.session?.user) {
+          if (!cancelled) {
+            setHasSavedDraft(hasCollegeRegistrationDraft());
+            setHydrated(true);
+            setRouteChecking(false);
+          }
+          return;
+        }
+
+        const res = await fetch("/api/college/applications", { credentials: "include" });
+        if (cancelled) return;
+        if (res.ok) {
+          const json = (await res.json()) as {
+            application?: { status?: string } | null;
+          };
+          const status = json.application?.status;
+          if (status === "approved") {
+            clearCollegeRegistrationDraft();
+            router.replace("/college/portal");
+            return;
+          }
+          if (status === "pending" || status === "rejected") {
+            router.replace("/college/pending");
+            return;
+          }
+        }
+
+        // Signed in but no college app yet — blank form (do not auto-fill old draft).
+        setHasSavedDraft(hasCollegeRegistrationDraft());
+        setHydrated(true);
+        setRouteChecking(false);
+      } catch {
+        if (!cancelled) {
+          setHasSavedDraft(hasCollegeRegistrationDraft());
+          setHydrated(true);
+          setRouteChecking(false);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (!hydrated || !persistDraft) return;
     writeCollegeRegistrationDraft(draft);
-  }, [draft, hydrated]);
+  }, [draft, hydrated, persistDraft]);
 
   const cities = getCitiesForState(draft.state);
   const ready = isCollegeRegistrationReady(draft);
   const canStartGoogle = ready && !signingIn;
 
   const patch = (partial: Partial<CollegeRegistrationDraft>) => {
+    setPersistDraft(true);
+    setHasSavedDraft(false);
     setDraft((prev) => ({ ...prev, ...partial }));
     setError(null);
     setShowReqNote(false);
+  };
+
+  const restoreSavedDraft = () => {
+    const saved = readCollegeRegistrationDraft();
+    if (saved) {
+      setDraft(saved);
+      setPersistDraft(true);
+    }
+    setHasSavedDraft(false);
+    setError(null);
+  };
+
+  const clearForm = () => {
+    clearCollegeRegistrationDraft();
+    setDraft(emptyCollegeRegistrationDraft());
+    setPersistDraft(false);
+    setHasSavedDraft(false);
+    setError(null);
   };
 
   const handleGoogleSignIn = async () => {
@@ -116,9 +186,26 @@ export function CollegeRegistrationForm() {
         return;
       }
 
-      // Already signed in (e.g. student account) — submit application and go to pending.
+      // Already signed in — if they already have a college app, go there; else submit this draft.
       const { data: sessionData } = await supabase.auth.getSession();
       if (sessionData.session?.user) {
+        const mine = await fetch("/api/college/applications", { credentials: "include" });
+        if (mine.ok) {
+          const json = (await mine.json()) as {
+            application?: { status?: string } | null;
+          };
+          const status = json.application?.status;
+          if (status === "approved") {
+            clearCollegeRegistrationDraft();
+            window.location.href = "/college/portal";
+            return;
+          }
+          if (status === "pending" || status === "rejected") {
+            window.location.href = "/college/pending";
+            return;
+          }
+        }
+
         const result = await submitCollegeApplicationWithUploads(draft);
         if (!result.ok) {
           setError(result.error);
@@ -161,6 +248,16 @@ export function CollegeRegistrationForm() {
     }
   };
 
+  if (routeChecking) {
+    return (
+      <div className={styles.root}>
+        <div className={styles.pendingCard}>
+          <p className={styles.pendingBody}>Checking your college account…</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.root}>
       <div className={styles.card}>
@@ -175,6 +272,19 @@ export function CollegeRegistrationForm() {
           Register once to unlock proctored Level 4–10 rounds, college leaderboards, and national
           finals for your students.
         </p>
+
+        {hasSavedDraft ? (
+          <p className={styles.privacyNote} style={{ marginTop: "0.75rem" }}>
+            A previous registration draft is saved in this browser.{" "}
+            <button type="button" className={styles.studentLink} onClick={restoreSavedDraft}>
+              Restore it
+            </button>
+            {" · "}
+            <button type="button" className={styles.studentLink} onClick={clearForm}>
+              Discard
+            </button>
+          </p>
+        ) : null}
 
         {/* 1. Institution details */}
         <div className={styles.section}>

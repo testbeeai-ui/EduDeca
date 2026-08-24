@@ -24,6 +24,7 @@ export function ReferralShareSheet({
   shareUrl,
 }: ReferralShareSheetProps) {
   const [copied, setCopied] = useState<"link" | "code" | null>(null);
+  const copiedVisible = open ? copied : null;
 
   useEffect(() => {
     if (!open) return;
@@ -33,10 +34,6 @@ export function ReferralShareSheet({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
-
-  useEffect(() => {
-    if (!open) setCopied(null);
-  }, [open]);
 
   if (!open) return null;
 
@@ -145,12 +142,12 @@ export function ReferralShareSheet({
               disabled={!code}
               className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold text-emerald-300/90 hover:bg-emerald-500/10 disabled:opacity-40"
             >
-              {copied === "code" ? (
+              {copiedVisible === "code" ? (
                 <Check className="size-3.5" />
               ) : (
                 <Copy className="size-3.5" />
               )}
-              {copied === "code" ? "Copied" : "Copy code"}
+              {copiedVisible === "code" ? "Copied" : "Copy code"}
             </button>
           </div>
           <p className="mt-2 truncate text-[11px] text-slate-500">{shareUrl}</p>
@@ -191,7 +188,7 @@ export function ReferralShareSheet({
             className="flex items-center gap-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-3 text-left transition hover:bg-emerald-500/20"
           >
             <span className="flex size-9 items-center justify-center rounded-full bg-emerald-500/30 text-emerald-300">
-              {copied === "link" ? (
+              {copiedVisible === "link" ? (
                 <Check className="size-4" />
               ) : (
                 <Link2 className="size-4" />
@@ -199,7 +196,7 @@ export function ReferralShareSheet({
             </span>
             <span>
               <span className="block text-sm font-bold text-white">
-                {copied === "link" ? "Link copied!" : "Copy link"}
+                {copiedVisible === "link" ? "Link copied!" : "Copy link"}
               </span>
               <span className="block text-[10px] text-slate-400">Paste anywhere</span>
             </span>

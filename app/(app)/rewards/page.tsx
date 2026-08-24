@@ -10,11 +10,9 @@ import {
   ReferralRewardCard,
   RewardCard,
   RewardGrid,
-  RewardsHero,
 } from "@/components/rewards/reward-components";
 import { Button } from "@/components/ui/button";
 import { prizeCards, userBadges } from "@/data/rewards";
-import { currentUser } from "@/data/user";
 
 export default function RewardsPage() {
   return (
@@ -27,12 +25,7 @@ export default function RewardsPage() {
       </MotionFade>
 
       <MotionFade delay={0.05}>
-        <RewardsHero streakDays={currentUser.streakDays} xp={currentUser.xp} />
-      </MotionFade>
-
-      <MotionFade delay={0.1}>
         <section className="space-y-4">
-          <h2 className="text-lg font-semibold">Prizes & Recognition</h2>
           <RewardGrid>
             {prizeCards.map((prize) => (
               <RewardCard
@@ -69,7 +62,12 @@ export default function RewardsPage() {
           size="lg"
           className="h-14 w-full rounded-2xl bg-gradient-to-r from-violet-600 via-indigo-600 to-purple-600 font-extrabold text-white shadow-xl shadow-indigo-500/20 hover:brightness-110 active:scale-[0.99] transition-all"
         >
-          <Link href="https://edublast.in" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2">
+          <Link
+            href="https://edublast.in"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2"
+          >
             Continue to Edublast.in
             <ArrowRight className="size-5 stroke-[2.5]" />
           </Link>
@@ -78,4 +76,3 @@ export default function RewardsPage() {
     </div>
   );
 }
-

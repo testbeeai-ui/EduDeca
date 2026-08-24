@@ -13,11 +13,9 @@ import {
   School,
   Triangle,
   Trophy,
-  Sparkles,
 } from "lucide-react";
 
-import { AnimatedNumber } from "@/components/common/animated-number";
-import { accentClasses, GlassCard } from "@/components/common/glass-card";
+import { accentClasses } from "@/components/common/glass-card";
 import type { LevelAccent } from "@/lib/types";
 import { springSoft, staggerContainer, staggerItem } from "@/lib/motion";
 import { cn } from "@/lib/utils";
@@ -38,42 +36,6 @@ const prizeIconMap = {
   "medal-3": Medal,
   ribbon: Ribbon,
 } as const;
-
-interface RewardsHeroProps {
-  streakDays: number;
-  xp: number;
-}
-
-export function RewardsHero({ streakDays, xp }: RewardsHeroProps) {
-  return (
-    <div className="glass-card card-top-light rounded-2xl p-6 relative overflow-hidden shadow-2xl border-emerald-500/20">
-      <div className="pointer-events-none absolute inset-0 shimmer opacity-25" aria-hidden />
-      <div className="absolute top-0 right-0 size-48 bg-gradient-to-br from-emerald-500/15 via-teal-500/10 to-transparent rounded-full blur-3xl pointer-events-none" />
-
-      <div className="relative z-10 flex flex-wrap items-center justify-between gap-6">
-        <div className="flex items-center gap-6">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">Streak Rewards</p>
-            <p className="text-3xl font-extrabold text-white sm:text-4xl mt-1 tracking-tight flex items-center gap-2">
-              <AnimatedNumber value={streakDays} /> <span className="text-lg font-semibold text-emerald-400">days</span>
-            </p>
-          </div>
-          <div className="h-12 w-px bg-white/10" aria-hidden />
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">Total XP Earned</p>
-            <p className="text-3xl font-extrabold text-emerald-400 sm:text-4xl mt-1 tracking-tight font-mono">
-              <AnimatedNumber value={xp} format={{ useGrouping: true }} />
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-3 py-1.5 text-xs font-bold text-emerald-300">
-          <Sparkles className="size-4 text-emerald-400" /> Rewards Multiplier Active
-        </div>
-      </div>
-    </div>
-  );
-}
 
 interface RewardCardProps {
   title: string;

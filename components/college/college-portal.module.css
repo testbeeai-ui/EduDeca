@@ -203,9 +203,25 @@
   margin-bottom: 24px;
 }
 
-@media (max-width: 1000px) {
+@media (max-width: 1100px) {
+  .statStrip {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
   .statStrip {
     grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+
+  .statBox {
+    padding: 14px 12px 12px;
+  }
+
+  .statVal {
+    font-size: 20px;
   }
 }
 
@@ -240,60 +256,89 @@
 
 .controlsRow {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  flex-direction: column;
   gap: 12px;
   margin-bottom: 16px;
 }
 
 .searchBox {
-  flex: 1;
-  min-width: 220px;
+  width: 100%;
   display: flex;
   align-items: center;
   gap: 9px;
   background: var(--cr-panel2);
   border: 1.5px solid var(--cr-border);
   border-radius: 12px;
-  padding: 11px 15px;
+  padding: 12px 15px;
 }
 
 .searchBox input {
   flex: 1;
+  min-width: 0;
   background: none;
   border: none;
   outline: none;
   color: var(--cr-text);
-  font-size: 13.5px;
+  font-size: 14px;
   font-family: inherit;
 }
 
+.controlsActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.filterGroup {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  gap: 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+
+.filterGroup::-webkit-scrollbar {
+  display: none;
+}
+
 .filterChip {
-  font-size: 12px;
+  flex: 0 0 auto;
+  font-size: 12.5px;
   font-weight: 700;
   color: var(--cr-muted);
   background: var(--cr-panel2);
   border: 1.5px solid var(--cr-border);
-  padding: 9px 14px;
-  border-radius: 10px;
+  padding: 10px 14px;
+  border-radius: 999px;
   cursor: pointer;
   white-space: nowrap;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.filterChipShort {
+  display: none;
 }
 
 .filterChipActive {
   color: var(--cr-teal);
-  border-color: rgba(34, 211, 166, 0.45);
-  background: rgba(34, 211, 166, 0.08);
+  border-color: rgba(34, 211, 166, 0.5);
+  background: rgba(34, 211, 166, 0.1);
 }
 
 .primaryBtn {
+  flex: 0 0 auto;
   font-size: 12.5px;
   font-weight: 700;
   color: #04140f;
   background: var(--cr-teal);
   border: none;
-  padding: 11px 17px;
-  border-radius: 10px;
+  padding: 11px 16px;
+  border-radius: 999px;
   cursor: pointer;
   white-space: nowrap;
 }
@@ -313,6 +358,97 @@
 .ghostBtn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .controlsActions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filterGroup {
+    width: 100%;
+  }
+
+  .filterChip {
+    flex: 1 1 0;
+    text-align: center;
+    padding: 10px 8px;
+    font-size: 12px;
+  }
+
+  .filterChipFull {
+    display: none;
+  }
+
+  .filterChipShort {
+    display: inline;
+  }
+
+  .primaryBtn {
+    width: 100%;
+    padding: 12px 16px;
+  }
+
+  .collegeCard {
+    padding: 16px;
+    gap: 12px;
+    border-radius: 14px;
+  }
+
+  .collegeName {
+    font-size: 17px;
+  }
+
+  .collegeMeta {
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  .collegeLogo {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    font-size: 18px;
+  }
+
+  .topbarRight .signedIn {
+    display: none;
+  }
+
+  .wordmark span {
+    display: none;
+  }
+
+  .tableCard {
+    border-radius: 12px;
+    margin-inline: -4px;
+  }
+
+  .tableCard table {
+    min-width: 720px;
+    font-size: 12.5px;
+  }
+
+  .tableCard thead th,
+  .tableCard tbody td {
+    padding: 11px 12px;
+  }
+
+  .tableFoot {
+    padding: 12px;
+    font-size: 11px;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 900px) {
+  .filterChipFull {
+    display: none;
+  }
+
+  .filterChipShort {
+    display: inline;
+  }
 }
 
 .tableCard {

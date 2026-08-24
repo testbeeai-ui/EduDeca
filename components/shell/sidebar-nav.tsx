@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { UserRound } from "lucide-react";
+import { UserRound, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -17,7 +17,9 @@ export function SidebarNav() {
   const pathname = usePathname();
   const isSignedIn = useAppStore((s) => s.isSignedIn);
 
-  const navItems: Array<{ href: string; label: string; icon: any }> = [...appNavItems];
+  const navItems: Array<{ href: string; label: string; icon: LucideIcon }> = [
+    ...appNavItems,
+  ];
   if (!isSignedIn) {
     navItems.splice(1, 0, {
       href: "/signin",
