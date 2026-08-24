@@ -70,6 +70,11 @@ export function readCollegeRegistrationDraft(): CollegeRegistrationDraft | null 
   }
 }
 
+/** True when sessionStorage still holds a college registration draft (any parseable payload). */
+export function hasCollegeRegistrationDraft(): boolean {
+  return readCollegeRegistrationDraft() !== null;
+}
+
 export function writeCollegeRegistrationDraft(draft: CollegeRegistrationDraft): void {
   if (typeof window === "undefined") return;
   try {
