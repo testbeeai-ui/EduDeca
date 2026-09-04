@@ -28,6 +28,7 @@ const pageTitles: Record<string, string> = {
   "/levels": "Level Map",
   "/leaderboard": "Leaderboard",
   "/rewards": "Rewards",
+  "/mock-test": "Mock Test",
   "/profile": "Profile",
   "/challenge": "Daily Challenge",
 };

@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  ClipboardList,
   Home,
   Star,
   Trophy,
@@ -11,6 +12,7 @@ export const appNavItems = [
   { href: "/levels", label: "Levels", icon: BarChart3 },
   { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
   { href: "/rewards", label: "Rewards", icon: Star },
+  { href: "/mock-test", label: "Mock Test", icon: ClipboardList },
 ] as const;
 
 export const profileNavItem = {
