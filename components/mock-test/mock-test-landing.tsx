@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Check, Clock, FileText, Play, RefreshCw } from "lucide-react";
 
 import { MOCK_LEVELS, MOCK_SET_COUNT, formatSetNumber, type MockTestLevelId } from "@/lib/mock-test/catalog";
-import { mergeProgressStates } from "@/lib/mock-test/attempt-sync";
+import { createRemoteRequestGate, mergeProgressStates } from "@/lib/mock-test/attempt-sync";
 import { edublastMockHandoffUrl } from "@/lib/mock-test/handoff";
 import {
   applyReturnQuery,
@@ -62,6 +62,7 @@ export function MockTestLanding() {
   );
   const stored = useMemo(() => parseProgressRaw(raw), [raw]);
   const [remote, setRemote] = useState<MockProgressState | null>(null);
+  const [remoteGate] = useState(createRemoteRequestGate);
   const queryString = searchParams.toString();
   const query = useMemo(() => parseReturnQuery(new URLSearchParams(queryString)), [queryString]);
   const local = query ? applyReturnQuery(stored, query) : stored;
@@ -69,11 +70,12 @@ export function MockTestLanding() {
 
   useEffect(() => {
     let cancelled = false;
+    const requestId = remoteGate.start();
     void fetch("/api/mock-attempts", { cache: "no-store", credentials: "include" })
       .then(async (res) => {
         if (res.status === 401 || !res.ok) return;
         const body = (await res.json()) as { progress?: unknown };
-        if (cancelled || body.progress == null) return;
+        if (cancelled || !remoteGate.shouldApply(requestId) || body.progress == null) return;
         setRemote(parseProgressRaw(JSON.stringify(body.progress)));
       })
       .catch(() => {
@@ -82,7 +84,7 @@ export function MockTestLanding() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [remoteGate]);
 
   useEffect(() => {
     const parsed = parseReturnQuery(new URLSearchParams(queryString));
@@ -94,6 +96,7 @@ export function MockTestLanding() {
 
   useEffect(() => {
     if (!remote && !query) return;
+    const requestId = remoteGate.start();
     void fetch("/api/mock-attempts", {
       method: "PUT",
       credentials: "include",
@@ -102,12 +105,12 @@ export function MockTestLanding() {
     }).then(async (res) => {
       if (res.status === 401 || !res.ok) return;
       const body = (await res.json()) as { progress?: unknown };
-      if (body.progress == null) return;
+      if (!remoteGate.shouldApply(requestId) || body.progress == null) return;
       setRemote(parseProgressRaw(JSON.stringify(body.progress)));
     }).catch(() => {
       // Keep the local merge if persist is unavailable.
     });
-  }, [queryString, remote?.lastLevel]);
+  }, [queryString, remote?.lastLevel, remoteGate]);
 
   const activeLevel = progress.lastLevel;
   const level = MOCK_LEVELS.find((item) => item.id === activeLevel) ?? MOCK_LEVELS[0];

@@ -1,9 +1,15 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { completedSetCountForLevel, createEmptyProgress, getSetProgress } from "./progress-store";
+import {
+  applyReturnQuery,
+  completedSetCountForLevel,
+  createEmptyProgress,
+  getSetProgress,
+} from "./progress-store";
 import {
   buildAttemptUpserts,
+  createRemoteRequestGate,
   mergeProgressStates,
   progressFromAttemptRows,
 } from "./attempt-sync";
@@ -190,5 +196,38 @@ describe("buildAttemptUpserts", () => {
     assert.equal(writes[0]?.status, "inprogress");
     assert.equal(writes[0]?.score_pct, null);
     assert.equal(writes[0]?.answers, undefined);
+  });
+});
+
+describe("createRemoteRequestGate", () => {
+  it("keeps persist results when a slower GET resolves afterwards", () => {
+    const gate = createRemoteRequestGate();
+    let remote: ReturnType<typeof createEmptyProgress> | null = null;
+
+    const getId = gate.start();
+    const putId = gate.start();
+
+    const persisted = applyReturnQuery(createEmptyProgress(), {
+      level: 1,
+      set: 1,
+      status: "inprogress",
+    });
+    if (gate.shouldApply(putId)) remote = persisted;
+
+    if (gate.shouldApply(getId)) remote = createEmptyProgress();
+
+    assert.ok(remote);
+    assert.equal(getSetProgress(remote, 1, 1)?.status, "inprogress");
+
+    const localCompleted = applyReturnQuery(createEmptyProgress(), {
+      level: 1,
+      set: 1,
+      status: "completed",
+      scorePct: 90,
+      correct: 9,
+      total: 10,
+    });
+    const display = mergeProgressStates(remote, localCompleted);
+    assert.equal(getSetProgress(display, 1, 1)?.status, "inprogress");
   });
 });

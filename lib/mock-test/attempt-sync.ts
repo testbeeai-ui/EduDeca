@@ -46,6 +46,19 @@ export function progressFromAttemptRows(rows: AttemptRow[]): MockProgressState {
   return state;
 }
 
+export function createRemoteRequestGate() {
+  let latest = 0;
+  return {
+    start() {
+      latest += 1;
+      return latest;
+    },
+    shouldApply(id: number) {
+      return id === latest;
+    },
+  };
+}
+
 export function mergeProgressStates(
   server: MockProgressState,
   client: MockProgressState,
