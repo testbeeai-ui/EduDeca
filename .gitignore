@@ -1,3 +1,7 @@
+# local agent / IDE
+.claude/
+.codegraph/
+
 # dependencies
 /node_modules
 /.pnp
@@ -30,6 +34,14 @@ yarn-error.log*
 
 # env files
 .env*
+!.env.example
+
+# Level-1 parser scratch (regenerate from DOCX / _l1_seed.json)
+_l1_docx_extract.txt
+_omath_sample.xml
+scripts/_l1_sql/
+scripts/_mock_seed_sql/
+scripts/__pycache__/
 
 # local college uploads only (applications/roster live in Supabase)
 /data/college-uploads/
