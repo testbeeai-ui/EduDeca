@@ -230,4 +230,31 @@ describe("createRemoteRequestGate", () => {
     const display = mergeProgressStates(remote, localCompleted);
     assert.equal(getSetProgress(display, 1, 1)?.status, "inprogress");
   });
+
+  it("still hydrates from GET when persist starts but never applies", () => {
+    const gate = createRemoteRequestGate();
+    let remote: ReturnType<typeof createEmptyProgress> | null = null;
+
+    const getId = gate.start();
+    gate.start();
+
+    const hydrated = applyReturnQuery(createEmptyProgress(), {
+      level: 2,
+      set: 4,
+      status: "inprogress",
+    });
+    if (gate.shouldApply(getId)) remote = hydrated;
+
+    assert.ok(remote);
+    assert.equal(getSetProgress(remote, 2, 4)?.status, "inprogress");
+
+    const retryId = gate.start();
+    const persisted = applyReturnQuery(hydrated, {
+      level: 2,
+      set: 4,
+      status: "inprogress",
+    });
+    if (gate.shouldApply(retryId)) remote = persisted;
+    assert.equal(getSetProgress(remote, 2, 4)?.status, "inprogress");
+  });
 });

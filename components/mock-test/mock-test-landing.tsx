@@ -75,7 +75,7 @@ export function MockTestLanding() {
       .then(async (res) => {
         if (res.status === 401 || !res.ok) return;
         const body = (await res.json()) as { progress?: unknown };
-        if (cancelled || !remoteGate.shouldApply(requestId) || body.progress == null) return;
+        if (cancelled || body.progress == null || !remoteGate.shouldApply(requestId)) return;
         setRemote(parseProgressRaw(JSON.stringify(body.progress)));
       })
       .catch(() => {
@@ -105,7 +105,7 @@ export function MockTestLanding() {
     }).then(async (res) => {
       if (res.status === 401 || !res.ok) return;
       const body = (await res.json()) as { progress?: unknown };
-      if (!remoteGate.shouldApply(requestId) || body.progress == null) return;
+      if (body.progress == null || !remoteGate.shouldApply(requestId)) return;
       setRemote(parseProgressRaw(JSON.stringify(body.progress)));
     }).catch(() => {
       // Keep the local merge if persist is unavailable.
