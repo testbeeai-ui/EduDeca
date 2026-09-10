@@ -9,7 +9,6 @@ export type DisciplineId =
   | "bio"
   | "amat"
   | "biotech"
-  | "cs"
   | "ent"
   | "eng"
   | "eco"
@@ -23,7 +22,7 @@ export interface DisciplineDef {
   shortName: string;
   accent: LevelAccent;
   family: DisciplineFamily;
-  icon: "atom" | "flask" | "sigma" | "dna" | "ruler" | "microscope" | "bot" | "lightbulb" | "message" | "hash" | "puzzle" | "globe" | "wallet";
+  icon: "atom" | "flask" | "sigma" | "dna" | "ruler" | "microscope" | "lightbulb" | "message" | "hash" | "puzzle" | "globe" | "wallet";
 }
 
 export interface DisciplineSlotDef {
@@ -83,14 +82,6 @@ export const DISCIPLINES: Record<DisciplineId, DisciplineDef> = {
     accent: "teal",
     family: "bio",
     icon: "microscope",
-  },
-  cs: {
-    id: "cs",
-    name: "AI & Computer Science",
-    shortName: "AI & CS",
-    accent: "pink",
-    family: null,
-    icon: "bot",
   },
   ent: {
     id: "ent",
@@ -160,3 +151,8 @@ export const FIXED_DISCIPLINE_IDS: DisciplineId[] = DISCIPLINE_SLOTS.filter(
 ).map((s) => s.fixedId!);
 
 export const LINEUP_SIZE = 10;
+
+export const DISCIPLINE_IDS = Object.keys(DISCIPLINES) as DisciplineId[];
+
+/** Every published pool a student might pick from. Lineup is 10 of these 12. */
+export const CATALOG_SIZE = DISCIPLINE_IDS.length;

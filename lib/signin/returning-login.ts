@@ -14,9 +14,12 @@ export type EduDecaEstablishedSnapshot = {
 export function isEduDecaStudentEstablished(
   snap: EduDecaEstablishedSnapshot,
 ): boolean {
+  // Class is required for challenge banks (XI/XII). Without it, never skip sign-in.
   const classOk = snap.classLevel === 11 || snap.classLevel === 12;
+  if (!classOk) return false;
+
   const institutionOk = (snap.institutionName ?? "").trim().length >= 2;
-  if (classOk && institutionOk) return true;
+  if (institutionOk) return true;
 
   const disciplines = snap.disciplines;
   if (Array.isArray(disciplines) && disciplines.filter(Boolean).length >= 10) {

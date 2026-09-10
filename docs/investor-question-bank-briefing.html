@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>EduDeca — Present vs Proposed</title>
+  <style>
+    :root {
+      --ink: #10211c;
+      --paper: #f3efe6;
+      --white: #fffdf8;
+      --line: #d7d0c2;
+      --now: #b4532a;
+      --next: #0f6e5c;
+      --ok: #1a6b45;
+      --seen: #c4a35a;
+      --serif: Palatino, "Palatino Linotype", Georgia, serif;
+      --sans: "Segoe UI", Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: var(--sans);
+      font-size: 15px;
+    }
+    .bar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      padding: 10px 20px;
+      background: var(--ink);
+      color: #f3efe6;
+    }
+    .bar b { margin-right: auto; font-family: var(--serif); }
+    .bar button {
+      border: 1px solid #3d524c;
+      background: transparent;
+      color: inherit;
+      padding: 6px 12px;
+      cursor: pointer;
+      font: 600 12px/1 var(--sans);
+    }
+    .bar .go { background: var(--next); border-color: var(--next); }
+    main { max-width: 1100px; margin: 0 auto; padding: 28px 20px 64px; }
+    h1 {
+      font-family: var(--serif);
+      font-size: clamp(28px, 4vw, 42px);
+      line-height: 1.15;
+      margin: 0 0 8px;
+    }
+    .sub { color: #4a5c56; margin: 0 0 28px; }
+
+    .pair {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .card {
+      background: var(--white);
+      border: 1px solid var(--line);
+      padding: 18px;
+    }
+    .card.now { border-top: 5px solid var(--now); }
+    .card.next { border-top: 5px solid var(--next); }
+    .lbl {
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      font-weight: 700;
+      margin: 0 0 6px;
+    }
+    .now .lbl { color: var(--now); }
+    .next .lbl { color: var(--next); }
+    h2 { font-family: var(--serif); font-size: 22px; margin: 0 0 14px; }
+    h3 { font-family: var(--serif); font-size: 20px; margin: 36px 0 14px; }
+
+    /* Mixed set visual */
+    .set {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+    }
+    .chip {
+      border: 1px dashed var(--line);
+      padding: 8px 6px;
+      text-align: center;
+      font-size: 11px;
+      background: #f7f2e8;
+    }
+    .set-tag {
+      grid-column: 1 / -1;
+      text-align: center;
+      font-size: 12px;
+      color: #6a5a48;
+      padding: 4px 0 2px;
+    }
+
+    /* Pools visual */
+    .pools { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .pool {
+      border: 1px solid var(--line);
+      padding: 8px;
+      min-height: 88px;
+    }
+    .pool strong { display: block; font-size: 12px; margin-bottom: 6px; }
+    .dots { display: flex; flex-wrap: wrap; gap: 4px; }
+    .dot {
+      width: 8px; height: 8px;
+      background: var(--next);
+      opacity: 0.85;
+    }
+
+    /* Round pick */
+    .flow {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    .q {
+      width: 64px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 700;
+      background: #e7f3ef;
+      border: 2px solid var(--next);
+    }
+    .arrow { color: var(--next); font-size: 22px; font-weight: 700; }
+
+    /* Highlight never repeat */
+    .hero-rule {
+      margin-top: 16px;
+      background: var(--ink);
+      color: #f3efe6;
+      padding: 18px 20px;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 16px;
+      align-items: center;
+    }
+    .hero-rule p { margin: 0; font-family: var(--serif); font-size: 22px; }
+    .stamp {
+      border: 3px solid var(--seen);
+      color: var(--seen);
+      padding: 10px 14px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-size: 13px;
+      transform: rotate(-6deg);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      background: var(--white);
+      border: 1px solid var(--line);
+      margin: 0 0 12px;
+    }
+    th, td {
+      text-align: left;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    th {
+      background: #efe8d8;
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    tr:last-child td { border-bottom: 0; }
+    code {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 12px;
+      background: #efe8d8;
+      padding: 1px 5px;
+    }
+    .tbl-name {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 13px;
+      margin: 0 0 8px;
+    }
+    .wide { margin-top: 8px; }
+
+    /* Tries */
+    .meter {
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      gap: 6px;
+      margin: 10px 0 8px;
+    }
+    .slot { height: 36px; background: #e8e2d4; border: 1px solid var(--line); }
+    .slot.used { background: var(--now); border-color: var(--now); }
+    .slot.left { background: #cfe8df; border-color: var(--next); }
+    .legend { display: flex; gap: 16px; font-size: 13px; color: #4a5c56; margin-bottom: 16px; }
+    .legend i {
+      display: inline-block;
+      width: 12px; height: 12px;
+      vertical-align: -1px;
+      margin-right: 4px;
+    }
+
+    .acts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .act {
+      background: var(--white);
+      border: 1px solid var(--line);
+      padding: 12px;
+      text-align: center;
+    }
+    .act b { display: block; font-family: var(--serif); font-size: 16px; margin-bottom: 4px; }
+    .act .yes { color: var(--ok); font-weight: 800; font-size: 12px; letter-spacing: 0.06em; }
+    .act .no { color: var(--now); font-weight: 800; font-size: 12px; letter-spacing: 0.06em; }
+    .tiny { font-size: 12px; color: #4a5c56; margin: 6px 0 0; }
+
+    @media (max-width: 800px) {
+      .pair, .acts, .pools { grid-template-columns: 1fr; }
+      .hero-rule { grid-template-columns: 1fr; text-align: center; }
+      .stamp { justify-self: center; }
+    }
+    @media print {
+      .bar { display: none; }
+      body { background: #fff; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <b>EduDeca</b>
+    <button type="button" onclick="window.print()">Print / PDF</button>
+    <button type="button" class="go" onclick="downloadBriefing()">Download</button>
+  </div>
+
+  <main>
+    <h1>Present vs proposed</h1>
+    <p class="sub">Visual only. How the bank is stored, how a round is built, how 10 tries work, and the one rule that matters.</p>
+
+    <div class="pair">
+      <article class="card now">
+        <p class="lbl">Present</p>
+        <h2>20 mixed sets</h2>
+        <div class="set" aria-label="A mixed set">
+          <div class="set-tag">Set 7 — one question from each subject, bundled together</div>
+          <div class="chip">Physics</div>
+          <div class="chip">Chem</div>
+          <div class="chip">Maths</div>
+          <div class="chip">Bio</div>
+          <div class="chip">Verbal</div>
+          <div class="chip">Quant</div>
+          <div class="chip">Analytical</div>
+          <div class="chip">GK</div>
+        </div>
+        <p class="tiny">Same day = same set. After 20 days, sets wrap. Questions can come back.</p>
+      </article>
+
+      <article class="card next">
+        <p class="lbl">Proposed</p>
+        <h2>12 private pools</h2>
+        <div class="pools" aria-label="Discipline pools">
+          <div class="pool">
+            <strong>Physics</strong>
+            <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+          </div>
+          <div class="pool">
+            <strong>Analytical</strong>
+            <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+          </div>
+          <div class="pool">
+            <strong>GK · + 9 more</strong>
+            <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+          </div>
+        </div>
+        <p class="tiny">Each pool: 20–30 questions, locked to that level. Take <b>one</b> from each. Never two Analytical.</p>
+      </article>
+    </div>
+
+    <div class="hero-rule">
+      <p>Correct, wrong, or skip — that question is used up for that student.</p>
+      <div class="stamp">Never repeated</div>
+      <p>Next Start Challenge draws a new unused item. Same paper does not come back.</p>
+    </div>
+
+    <h3>Start Challenge — how we pick</h3>
+    <div class="pair">
+      <article class="card now">
+        <p class="lbl">Present</p>
+        <p style="margin:0 0 10px">Load the whole set → jumble order.</p>
+        <div class="flow">
+          <div class="q" style="border-color:var(--now);background:#f8ece4">Set 7</div>
+          <span class="arrow" style="color:var(--now)">→</span>
+          <div class="q" style="border-color:var(--now);background:#f8ece4">10 cards<br>same bundle</div>
+        </div>
+      </article>
+      <article class="card next">
+        <p class="lbl">Proposed</p>
+        <p style="margin:0 0 10px">One unused from each pool → shuffle.</p>
+        <div class="flow">
+          <div class="q">Phy</div>
+          <div class="q">Ana</div>
+          <div class="q">GK</div>
+          <span class="arrow">→</span>
+          <div class="q">Random<br>order</div>
+        </div>
+      </article>
+    </div>
+
+    <h3>What <code>sort_order</code> means</h3>
+    <p class="tiny" style="margin-top:0">Same column name. Completely different job.</p>
+    <table>
+      <thead>
+        <tr>
+          <th></th>
+          <th>Present</th>
+          <th>Proposed</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>sort_order is</b></td>
+          <td>The <b>set / paper number</b> (1 to 20)</td>
+          <td>The <b>item number inside one discipline</b> (1 to 20–30)</td>
+        </tr>
+        <tr>
+          <td><b>If the number is 7</b></td>
+          <td>Load mixed set 7: Physics-7 + Chemistry-7 + Analytical-7 + … all together</td>
+          <td>Physics item #7 in the Physics pool only. Chemistry #7 is a different row, not the same paper</td>
+        </tr>
+        <tr>
+          <td><b>Who shares that number</b></td>
+          <td>All 12 subjects share set 7</td>
+          <td>Nobody shares it. Each pool counts 1, 2, 3… on its own</td>
+        </tr>
+        <tr>
+          <td><b>Start Challenge uses it to</b></td>
+          <td><code>WHERE level = 1 AND sort_order = 7</code> → whole set</td>
+          <td>Does not pick a set. Picks 1 unused row per discipline, any remaining numbers</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="pair">
+      <article class="card now">
+        <p class="lbl">Present · sort_order = 7</p>
+        <p class="tbl-name">One mixed set. Every subject uses 7.</p>
+        <table>
+          <thead>
+            <tr><th>id</th><th>subject_id</th><th>sort_order</th><th>Means</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>l1-phy-07</td><td>phy</td><td>7</td><td>Physics card in set 7</td></tr>
+            <tr><td>l1-che-07</td><td>che</td><td>7</td><td>Chemistry card in set 7</td></tr>
+            <tr><td>l1-log-07</td><td>log</td><td>7</td><td>Analytical card in set 7</td></tr>
+          </tbody>
+        </table>
+        <p class="tiny">Student on set 7 gets all three in the same round.</p>
+      </article>
+      <article class="card next">
+        <p class="lbl">Proposed · sort_order = 7</p>
+        <p class="tbl-name">Three separate pools. 7 is only a slot inside that pool.</p>
+        <table>
+          <thead>
+            <tr><th>id</th><th>discipline_id</th><th>sort_order</th><th>Means</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>l1-phy-007</td><td>phy</td><td>7</td><td>7th Physics question in the Physics bank</td></tr>
+            <tr><td>l1-che-007</td><td>che</td><td>7</td><td>7th Chemistry question — not tied to Physics 7</td></tr>
+            <tr><td>l1-log-007</td><td>log</td><td>7</td><td>7th Analytical question — not tied to Physics 7</td></tr>
+          </tbody>
+        </table>
+        <p class="tiny">A round might take Physics 3, Chemistry 19, Analytical 7. The numbers do not have to match.</p>
+      </article>
+    </div>
+
+    <h3>Table structure</h3>
+    <p class="tiny" style="margin-top:0">Live table today: <code>edudeca_questions</code> (240 rows = 12 subjects × 20 sets, Level 1 only).</p>
+
+    <p class="tbl-name">edudeca_questions — same table, column meaning changes</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Column</th>
+          <th>Type</th>
+          <th>Present</th>
+          <th>Proposed</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>id</code></td>
+          <td>text PK</td>
+          <td>Question id</td>
+          <td>Same — delete this one row to retire a question</td>
+        </tr>
+        <tr>
+          <td><code>level</code></td>
+          <td>smallint</td>
+          <td>Which level</td>
+          <td>Strict lock. Level 1 never mixes with Level 2</td>
+        </tr>
+        <tr>
+          <td><code>subject_id</code></td>
+          <td>text</td>
+          <td>phy, che, log, …</td>
+          <td>Same codes (can keep this name, or rename to discipline_id)</td>
+        </tr>
+        <tr>
+          <td><code>sort_order</code></td>
+          <td>smallint</td>
+          <td><b>Set number 1–20.</b> Every subject with 7 = one mixed paper</td>
+          <td><b>Slot inside that subject only.</b> Physics 7 is not Chemistry 7</td>
+        </tr>
+        <tr>
+          <td><code>stem</code></td>
+          <td>text</td>
+          <td>Question text</td>
+          <td>Same</td>
+        </tr>
+        <tr>
+          <td><code>options</code></td>
+          <td>jsonb</td>
+          <td>Four choices</td>
+          <td>Same</td>
+        </tr>
+        <tr>
+          <td><code>correct_index</code></td>
+          <td>smallint</td>
+          <td>Right option</td>
+          <td>Same</td>
+        </tr>
+        <tr>
+          <td><code>explanation</code></td>
+          <td>text</td>
+          <td>Review copy</td>
+          <td>Same</td>
+        </tr>
+        <tr>
+          <td><code>difficulty_rating</code></td>
+          <td>smallint</td>
+          <td>1 / 2 / 3</td>
+          <td>Same</td>
+        </tr>
+        <tr>
+          <td><code>published</code></td>
+          <td>bool</td>
+          <td>Hidden if false</td>
+          <td>Soft remove without deleting history</td>
+        </tr>
+        <tr>
+          <td><code>created_at</code></td>
+          <td>timestamptz</td>
+          <td>When inserted</td>
+          <td>Same</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="tiny">Present unique: <code>(level, subject_id, sort_order)</code> = one Physics row per set. Proposed: drop that unique so Physics can have 20–30 rows on Level 1.</p>
+
+    <p class="tbl-name wide"><code>edudeca_question_seen</code> — new table (never repeated)</p>
+    <table>
+      <thead>
+        <tr><th>Column</th><th>Type</th><th>Meaning</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>uuid PK</td><td>Log row</td></tr>
+        <tr><td><code>user_id</code></td><td>uuid</td><td>Which student</td></tr>
+        <tr><td><code>question_id</code></td><td>FK → questions.id</td><td>Which exact question they already faced</td></tr>
+        <tr><td><code>level</code></td><td>int</td><td>Copied from the question — no mix-up later</td></tr>
+        <tr><td><code>discipline_id</code></td><td>text</td><td>Copied — easy reports</td></tr>
+        <tr><td><code>outcome</code></td><td>correct | wrong | skip</td><td>All three = seen. None come back</td></tr>
+        <tr><td><code>created_at</code></td><td>timestamptz</td><td>When they faced it</td></tr>
+      </tbody>
+    </table>
+    <p class="tiny">Unique: <code>(user_id, question_id)</code>. Asha never sees l1-log-003 again. Ravi still can.</p>
+
+    <p class="tbl-name wide"><code>edudeca_level_trials</code> — already live (10 tries)</p>
+    <table>
+      <thead>
+        <tr><th>Column</th><th>Type</th><th>Meaning</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>uuid PK</td><td>One attempt event</td></tr>
+        <tr><td><code>user_id</code></td><td>uuid</td><td>Which student</td></tr>
+        <tr><td><code>level</code></td><td>int 1–10</td><td>Which level</td></tr>
+        <tr><td><code>outcome</code></td><td>won | strikes | time | below_threshold</td><td>Fail outcomes count toward 10. Win does not eat a fail slot</td></tr>
+        <tr><td><code>created_at</code></td><td>timestamptz</td><td>When</td></tr>
+      </tbody>
+    </table>
+    <p class="tiny">This table counts tries. It does not store question ids. Seen vs tries stay separate.</p>
+
+    <h3>10 tries — how an attempt is counted</h3>
+    <div class="legend">
+      <span><i style="background:var(--now)"></i> Fail used</span>
+      <span><i style="background:#cfe8df;border:1px solid var(--next)"></i> Tries left</span>
+    </div>
+    <div class="meter" aria-label="10 attempt slots">
+      <div class="slot used"></div>
+      <div class="slot used"></div>
+      <div class="slot used"></div>
+      <div class="slot left"></div>
+      <div class="slot left"></div>
+      <div class="slot left"></div>
+      <div class="slot left"></div>
+      <div class="slot left"></div>
+      <div class="slot left"></div>
+      <div class="slot left"></div>
+    </div>
+    <p class="tiny" style="margin-bottom:18px">Example: 3 fails used, 7 left. 10th fail closes the level. Spare questions in the pool do not add an 11th try.</p>
+
+    <div class="acts">
+      <div class="act">
+        <b>Pass</b>
+        <span class="no">No fail used</span>
+        <p class="tiny">Question still marked seen</p>
+      </div>
+      <div class="act">
+        <b>Fail round</b>
+        <span class="yes">+1 try used</span>
+        <p class="tiny">Every finished card is seen</p>
+      </div>
+      <div class="act">
+        <b>Quit mid-round</b>
+        <span class="no">No fail used</span>
+        <p class="tiny">Only answered cards are seen</p>
+      </div>
+      <div class="act">
+        <b>Skip a card</b>
+        <span class="no">No extra try</span>
+        <p class="tiny">That card is still never repeated</p>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    function downloadBriefing() {
+      var blob = new Blob(["<!DOCTYPE html>\n" + document.documentElement.outerHTML], { type: "text/html;charset=utf-8" });
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "EduDeca-Present-vs-Proposed.html";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+  </script>
+</body>
+</html>

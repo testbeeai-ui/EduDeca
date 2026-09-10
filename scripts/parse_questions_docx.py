@@ -66,6 +66,7 @@ def parse_level_chunk(chunk: str, level: int) -> list[dict]:
                 "stem": stem,
                 "options": opts,
                 "level": level,
+                "type": None,
             }
         )
 

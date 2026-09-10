@@ -47,7 +47,7 @@ export function CollegePendingView() {
           }
         }
 
-        const mine = await fetch("/api/college/applications", { credentials: "include" });
+        const mine = await fetch("/api/college/applications?mine=1", { credentials: "include" });
         const json = (await mine.json()) as {
           application?: {
             status?: string;
@@ -108,7 +108,7 @@ export function CollegePendingView() {
     let cancelled = false;
     const tick = async () => {
       try {
-        const mine = await fetch("/api/college/applications", { credentials: "include" });
+        const mine = await fetch("/api/college/applications?mine=1", { credentials: "include" });
         if (!mine.ok || cancelled) return;
         const json = (await mine.json()) as {
           application?: {

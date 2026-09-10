@@ -1,5 +1,9 @@
 import type { SquadInfo } from "@/lib/types";
 
+/** Official Edubite WhatsApp group (same invite as EduBite WA Squad). */
+export const WHATSAPP_COMMUNITY_URL =
+  "https://chat.whatsapp.com/KRGYkPhUWSRF89Ghp04iCb";
+
 export const squadInfo: SquadInfo = {
   name: "Quark Squad",
   nationalRank: 6,

@@ -15,7 +15,7 @@ import {
   type CollegeRegistrationDraft,
 } from "@/lib/college/registration";
 import { saveCollegeUploadFile } from "@/lib/college/upload-store";
-import { createSupabaseServer } from "@/lib/supabase/server";
+import { requireApiUser } from "@/lib/supabase/require-user";
 
 function isCollegeApplicationPayloadReady(draft: CollegeRegistrationDraft): boolean {
   const required = [
@@ -35,10 +35,7 @@ function isCollegeApplicationPayloadReady(draft: CollegeRegistrationDraft): bool
 }
 
 async function requireUser() {
-  const supabase = await createSupabaseServer();
-  const { data, error } = await supabase.auth.getUser();
-  if (error || !data.user) return null;
-  return { user: data.user, supabase };
+  return requireApiUser();
 }
 
 async function parseApplicationPost(request: Request): Promise<{
@@ -76,14 +73,17 @@ async function parseApplicationPost(request: Request): Promise<{
   };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const auth = await requireUser();
   if (!auth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const { user } = auth;
+  const mineOnly = new URL(request.url).searchParams.get("mine") === "1";
 
-  if (isTesterInvestorEmail(user.email)) {
+  // Testers hitting AuthGate / pending poll only need their own row.
+  // Full admin lists stay on `/api/college/applications` without `mine=1`.
+  if (isTesterInvestorEmail(user.email) && !mineOnly) {
     const pending = await listPendingCollegeApplications();
     const applications = await listAllCollegeApplicationsForAdmin();
     const application = await getCollegeApplicationForUser(user.id);

@@ -1,7 +1,7 @@
 "use client";
 
-import { Rocket, Share2, ShieldCheck, Users } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { MessageCircle, Rocket, Share2, ShieldCheck, Users } from "lucide-react";
+import { useCallback, useState } from "react";
 
 import { AvatarStack } from "@/components/common/avatar-stack";
 import {
@@ -9,11 +9,12 @@ import {
   type ReferralMinePayload,
 } from "@/components/home/referral-list-dialog";
 import { ReferralShareSheet } from "@/components/home/referral-share-sheet";
+import { squadInfo, WHATSAPP_COMMUNITY_URL } from "@/data/squad";
+import { supabase } from "@/lib/supabase/client";
 import { useAppStore } from "@/store/useAppStore";
 
 /**
- * Referral card: primary CTA opens share sheet (WhatsApp / copy / more);
- * secondary opens who joined via your ED- code.
+ * Squad card: official WhatsApp community join + referral list.
  */
 export function SquadCard() {
   const isSignedIn = useAppStore((s) => s.isSignedIn);
@@ -24,6 +25,11 @@ export function SquadCard() {
 
   const load = useCallback(async () => {
     if (!isSignedIn) {
+      setData(null);
+      return;
+    }
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session) {
       setData(null);
       return;
     }
@@ -46,17 +52,15 @@ export function SquadCard() {
     }
   }, [isSignedIn]);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  const count = data?.count ?? 0;
-  const members =
+  const referred =
     data?.entries.map((e) => ({
       id: e.id,
       initials: e.initials,
       avatarColor: e.avatarColor,
     })) ?? [];
+  const members = referred.length > 0 ? referred : squadInfo.members;
+  const memberCount =
+    referred.length > 0 ? (data?.count ?? referred.length) : squadInfo.membersActive;
 
   const openShare = () => {
     if (!isSignedIn) return;
@@ -81,28 +85,30 @@ export function SquadCard() {
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <p className="font-bold text-white text-base tracking-tight">
-                  Refer friends
+                  Squad &lsquo;{squadInfo.name}&rsquo;
                 </p>
                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[11px] font-bold text-emerald-300">
                   <ShieldCheck className="size-3 text-emerald-400" />
-                  {loading && !data ? "…" : `${count} joined`}
+                  #{squadInfo.nationalRank} National
                 </span>
               </div>
               <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">
-                {isSignedIn
-                  ? "Invite classmates with your personal link. They sign up → they land in your referral list."
-                  : "Sign in to get your ED- invite code and start referring."}
+                {memberCount} members answering daily. {squadInfo.referralPrompt}
               </p>
-              {data?.code ? (
-                <p className="mt-1.5 font-mono text-[11px] text-emerald-400/90">
-                  {data.code}
-                </p>
-              ) : null}
             </div>
 
             {members.length > 0 ? <AvatarStack members={members} /> : null}
 
             <div className="flex flex-wrap gap-2 pt-0.5">
+              <a
+                href={WHATSAPP_COMMUNITY_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#25D366] px-3.5 py-2 text-xs font-extrabold text-[#04140b] shadow-lg shadow-emerald-500/20 transition hover:brightness-110"
+              >
+                <MessageCircle className="size-3.5" />
+                Join WhatsApp community
+              </a>
               <button
                 type="button"
                 onClick={openShare}

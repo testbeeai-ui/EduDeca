@@ -1,6 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { hasLiveAccessToken, hasRefreshableSession } from "@/lib/supabase/auth-cookie";
 import { createSupabaseMiddleware } from "@/lib/supabase/middleware";
+import {
+  SESSION_REFRESH_TIMEOUT_MS,
+  isStaleAuthRefreshError,
+  withTimeout,
+} from "@/lib/supabase/session-refresh";
 
 function clearAuthCookies(response: NextResponse, request: NextRequest) {
   for (const cookie of request.cookies.getAll()) {
@@ -11,7 +17,6 @@ function clearAuthCookies(response: NextResponse, request: NextRequest) {
 }
 
 export async function middleware(request: NextRequest) {
-  // Keep one cookie host in dev (localhost vs 127.0.0.1 break Google OAuth cookies).
   if (process.env.NODE_ENV === "development") {
     const host = request.headers.get("host") ?? "";
     if (host.startsWith("127.0.0.1")) {
@@ -23,7 +28,6 @@ export async function middleware(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
-  // Google sometimes returns to Site URL with ?code= instead of /auth/callback.
   const oauthCode = request.nextUrl.searchParams.get("code");
   if (
     oauthCode &&
@@ -39,27 +43,33 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const hasAuthCookies = request.cookies.getAll().some((c) => c.name.startsWith("sb-"));
+  const cookies = request.cookies.getAll();
+  const hasAuthCookies = cookies.some((c) => c.name.startsWith("sb-"));
   if (!hasAuthCookies) {
     return NextResponse.next();
   }
 
-  try {
-    const { supabase, getResponse } = createSupabaseMiddleware(request);
-    await supabase.auth.getUser();
-    return getResponse();
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.warn("[middleware] session refresh skipped", message);
-    if (
-      message.includes("JSON") ||
-      message.includes("Unexpected end") ||
-      message.includes("parse")
-    ) {
-      return clearAuthCookies(NextResponse.next({ request }), request);
-    }
+  if (hasLiveAccessToken(cookies)) {
     return NextResponse.next();
   }
+
+  if (!hasRefreshableSession(cookies)) {
+    return clearAuthCookies(NextResponse.next({ request }), request);
+  }
+
+  const { supabase, getResponse } = createSupabaseMiddleware(request);
+  try {
+    const { error } = await withTimeout(
+      Promise.resolve(supabase.auth.getUser()),
+      SESSION_REFRESH_TIMEOUT_MS,
+    );
+    if (error && isStaleAuthRefreshError(error.code ?? "", error.message)) {
+      return clearAuthCookies(getResponse(), request);
+    }
+  } catch {
+    // Keep the refresh cookie; the browser client can retry after boot.
+  }
+  return getResponse();
 }
 
 export const config = {

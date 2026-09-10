@@ -178,16 +178,22 @@
   box-shadow: 0 0 10px rgba(6, 182, 212, 0.15);
 }
 
-.edu-blast-challenge .ebc-difficulty {
+.edu-blast-challenge .ebc-group-tag {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
   font-size: 11px;
-  color: #fde047;
-  background: rgba(245, 158, 11, 0.15);
-  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: #e2e8f0;
+  background: rgba(148, 163, 184, 0.12);
+  border: 1px solid rgba(148, 163, 184, 0.28);
   padding: 4px 12px;
   border-radius: 20px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
 }
 
 .edu-blast-challenge .ebc-marks-tag {

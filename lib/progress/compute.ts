@@ -45,20 +45,15 @@ export function applyChallengeToProgress(
   payload: ChallengeCompletePayload,
   today = istDateKey(),
 ): EduDecaProgress {
-  const xpGain = payload.correct * 10;
-  let nextSubjectLevels = {
-    ...normalizeSubjectLevels(state.subjectLevels, state.campaignLevel),
-  };
-
-  for (const result of payload.results) {
-    if (!result.isCorrect) continue;
-    if (nextSubjectLevels[result.subjectId] !== undefined) {
-      nextSubjectLevels[result.subjectId] = Math.min(
-        (nextSubjectLevels[result.subjectId] ?? 1) + 1,
-        10,
-      );
-    }
+  if (payload.reason === "quit") {
+    return state;
   }
+
+  const xpGain = payload.correct * 10;
+  let nextSubjectLevels = normalizeSubjectLevels(
+    state.subjectLevels,
+    state.campaignLevel,
+  );
 
   let nextStreak = state.streakDays;
   let nextCampaignLevel = state.campaignLevel;

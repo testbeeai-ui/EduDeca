@@ -6,19 +6,16 @@ import {
   updateAntiCapture,
   updateDisciplines,
 } from "@/lib/progress/server";
-import { createSupabaseServer } from "@/lib/supabase/server";
+import { requireApiUser } from "@/lib/supabase/require-user";
 
 /** Load (or create) signed-in user progress from Supabase. */
 export async function GET() {
   try {
-    const supabase = await createSupabaseServer();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
+    const auth = await requireApiUser();
+    if (!auth) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const { supabase, user } = auth;
 
     const progress = await getOrCreateProgress(supabase, user);
     return NextResponse.json({ progress });
@@ -55,14 +52,11 @@ export async function PATCH(request: NextRequest) {
   }
 
   try {
-    const supabase = await createSupabaseServer();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
+    const auth = await requireApiUser();
+    if (!auth) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const { supabase, user } = auth;
 
     let progress = await getOrCreateProgress(supabase, user);
 

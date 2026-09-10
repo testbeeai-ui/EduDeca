@@ -1,4 +1,5 @@
 import { levelPath as baseLevelPath } from "@/data/levels";
+import { LEVEL4_PATH_SUBTITLE } from "@/lib/challenge/level4-gate-copy";
 import type { LevelNode } from "@/lib/types";
 
 export function getLevelPath(
@@ -12,7 +13,7 @@ export function getLevelPath(
         return { ...node, status: "completed" };
       }
       if (node.number === 4) {
-        return { ...node, status: "current", subtitle: "Pay ₹999 to unlock proctored round" };
+        return { ...node, status: "current", subtitle: LEVEL4_PATH_SUBTITLE };
       }
       return { ...node, status: "locked" };
     }
@@ -21,6 +22,9 @@ export function getLevelPath(
       return { ...node, status: "completed" };
     }
     if (node.number === campaignLevel) {
+      if (node.number === 4) {
+        return { ...node, status: "current", subtitle: LEVEL4_PATH_SUBTITLE };
+      }
       return { ...node, status: "current" };
     }
     if (node.number >= 4 && !isProctoredPaid) {

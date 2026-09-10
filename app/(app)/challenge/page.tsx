@@ -3,12 +3,23 @@
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { ChallengeBlocked } from "@/components/challenge/challenge-blocked";
 import { ChallengeSession } from "@/components/challenge/challenge-session";
-import { ProctoredPaywall } from "@/components/challenge/proctored-paywall";
+import { Level4Gate } from "@/components/challenge/level4-gate";
 import { EduDecaLogo } from "@/components/shell/edudeca-logo";
+import { useLevelTrials } from "@/hooks/use-level-trials";
+import { useQuestionAvailability } from "@/hooks/use-question-availability";
 import { isTesterInvestorEmail } from "@/lib/admin/tester-allowlist";
+import { isLevelReady } from "@/lib/challenge/availability";
+import { isLevel4Campaign } from "@/lib/challenge/level4-gate-copy";
 import { saveChallengeAttempt } from "@/lib/challenge/load-daily-challenge";
-import { challengeMaxStrikes } from "@/lib/challenge/spec";
+import {
+  challengeGroupsPerDiscipline,
+  challengeMaxStrikes,
+  challengeQuestionCount,
+  challengeSessionDurationSec,
+} from "@/lib/challenge/spec";
+import { trialGateMessage } from "@/lib/challenge/trials";
 import type { ChallengeCompletePayload } from "@/lib/types";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -16,84 +27,60 @@ export default function ChallengePage() {
   const router = useRouter();
   const email = useAppStore((s) => s.email);
   const campaignLevel = useAppStore((s) => s.campaignLevel);
-  const isProctoredPaid = useAppStore((s) => s.isProctoredPaid);
   const todayCompleted = useAppStore((s) => s.todayCompleted);
   const applyChallengeResult = useAppStore((s) => s.applyChallengeResult);
-  const setProctoredPaid = useAppStore((s) => s.setProctoredPaid);
   const hydrateProgress = useAppStore((s) => s.hydrateProgress);
   const antiCapturePreference = useAppStore((s) => s.antiCaptureEnabled);
 
   // Freeze the level for this visit so winning L1 cannot auto-boot L2 on this page.
   const [runLevel] = useState(campaignLevel);
-  const [paywallOpen, setPaywallOpen] = useState(
-    () => campaignLevel >= 4 && !isProctoredPaid
-  );
-  const [started, setStarted] = useState(false);
+  const [adminPreview, setAdminPreview] = useState(false);
 
-  const isTester = isTesterInvestorEmail(email);
+  const isAdmin = isTesterInvestorEmail(email);
+  const availability = useQuestionAvailability();
+  const level4BankReady = isLevelReady(availability, 4);
+  const { trials, loading: trialsLoading } = useLevelTrials(true);
   const antiCaptureEnabled =
-    runLevel >= 4 && (isTester ? antiCapturePreference : true);
-  const blocked = campaignLevel >= 4 && !isProctoredPaid;
-  const completedToday = todayCompleted && !blocked && !isTester;
+    runLevel >= 4 && (isAdmin ? antiCapturePreference : true);
+  const showLevel4Gate = isLevel4Campaign(runLevel) && !(isAdmin && adminPreview);
+  const completedToday = todayCompleted && !showLevel4Gate && !isAdmin;
   const maxStrikes = challengeMaxStrikes(runLevel);
-
+  const questionCount = challengeQuestionCount(runLevel);
+  const groupsPerDiscipline = challengeGroupsPerDiscipline(runLevel);
+  const sessionMinutes = challengeSessionDurationSec(runLevel) / 60;
+  const studentGate = !isAdmin && trials && trials.gate !== "ok" ? trials.gate : null;
 
   const handleComplete = useCallback(
-    (payload: ChallengeCompletePayload) => {
-      if (payload.reason !== "quit") {
-        applyChallengeResult(payload);
-        const strikes = payload.results.filter((r) => !r.isCorrect).length;
-        void saveChallengeAttempt({ ...payload, strikes }).then((progress) => {
-          if (progress) hydrateProgress(progress);
-        });
+    async (payload: ChallengeCompletePayload) => {
+      const strikes = payload.results.filter((r) => !r.isCorrect).length;
+      if (payload.reason === "quit") {
+        return saveChallengeAttempt({ ...payload, strikes });
       }
-      if (payload.reason === "won" && payload.campaignLevelAtStart === 3) {
-        setPaywallOpen(true);
-      }
+      applyChallengeResult(payload);
+      const result = await saveChallengeAttempt({ ...payload, strikes });
+      if (result.progress) hydrateProgress(result.progress);
+      return result;
     },
-    [applyChallengeResult, hydrateProgress]
+    [applyChallengeResult, hydrateProgress],
   );
 
-  const handlePay = () => {
-    setProctoredPaid();
-    setPaywallOpen(false);
-    setStarted(true);
-  };
-
-  if (blocked && !started) {
+  if (showLevel4Gate) {
     return (
-      <div className="flex h-dvh flex-col overflow-hidden px-4 py-6 sm:px-8">
-        <header className="flex h-12 shrink-0 items-center">
+      <div className="relative flex h-dvh flex-col overflow-hidden bg-slate-950">
+        <header className="relative z-20 flex h-14 shrink-0 items-center px-5 sm:px-8">
           <EduDecaLogo />
         </header>
-        <ProctoredPaywall open={paywallOpen} onOpenChange={setPaywallOpen} onPay={handlePay} />
-        {!paywallOpen ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
-            <p className="text-lg font-semibold text-foreground">Proctored round required</p>
-            <p className="max-w-md text-sm text-muted-foreground">
-              Complete payment to unlock Level 4 and continue your campaign.
-            </p>
-            <button
-              type="button"
-              className="text-sm text-primary hover:underline"
-              onClick={() => setPaywallOpen(true)}
-            >
-              View unlock options
-            </button>
-            <button
-              type="button"
-              className="text-sm text-muted-foreground hover:underline"
-              onClick={() => router.push("/home")}
-            >
-              Back to Home
-            </button>
-          </div>
-        ) : null}
+        <Level4Gate
+          onBack={() => router.push("/home")}
+          isAdmin={isAdmin}
+          bankReady={level4BankReady}
+          onAdminPreview={() => setAdminPreview(true)}
+        />
       </div>
     );
   }
 
-  if (completedToday && !started) {
+  if (completedToday) {
     return (
       <div className="flex h-dvh flex-col items-center justify-center gap-4 px-4 text-center">
         <p className="text-xl font-semibold text-foreground">Today&apos;s challenge complete</p>
@@ -107,6 +94,28 @@ export default function ChallengePage() {
         >
           Back to Home
         </button>
+      </div>
+    );
+  }
+
+  if (!isAdmin && trialsLoading) {
+    return (
+      <div className="flex h-dvh flex-col items-center justify-center gap-3 text-muted-foreground">
+        <div className="size-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        <p className="text-sm">Checking attempts…</p>
+      </div>
+    );
+  }
+
+  if (studentGate && studentGate !== "daily_lock") {
+    const copy = trialGateMessage(studentGate);
+    return (
+      <div className="flex h-dvh flex-col items-center justify-center px-4">
+        <ChallengeBlocked
+          title={copy.code === "TRIALS_EXHAUSTED" ? "No attempts left" : "Not available"}
+          description={copy.error}
+          onBack={() => router.push("/home")}
+        />
       </div>
     );
   }
@@ -126,7 +135,9 @@ export default function ChallengePage() {
               Daily Challenge
             </p>
             <p className="text-[11px] text-muted-foreground sm:text-xs">
-              10 questions · 1 per discipline · {maxStrikes} strikes
+              {questionCount} questions · {groupsPerDiscipline} per discipline ·{" "}
+              {sessionMinutes} minutes · {maxStrikes} strikes
+              {isAdmin ? " · unlimited tester attempts" : " · 10 fail attempts"}
               {antiCaptureEnabled ? " · Screenshots blocked" : ""} · finish to pass
             </p>
           </div>
@@ -134,13 +145,13 @@ export default function ChallengePage() {
 
         <ChallengeSession
           campaignLevel={runLevel}
+          remainingAttempts={isAdmin ? null : (trials?.remaining ?? null)}
+          failCount={trials?.failCount ?? 0}
+          unlimitedTrials={isAdmin}
           onComplete={handleComplete}
           onQuit={() => router.push("/home")}
-          onOpenPaywall={() => setPaywallOpen(true)}
         />
       </div>
-
-      <ProctoredPaywall open={paywallOpen} onOpenChange={setPaywallOpen} onPay={handlePay} />
     </div>
   );
 }

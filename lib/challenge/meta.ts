@@ -14,12 +14,6 @@ export function formatEduBlastClock(sec: number): string {
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 }
 
-export function difficultyRatingToLabel(rating: number): string {
-  if (rating <= 2) return "Easy";
-  if (rating <= 4) return "Medium";
-  return "Hard";
-}
-
 export type EduBlastDotState = "pending" | "current" | "correct" | "wrong" | "skip";
 
 export function buildEduBlastDotStates(
@@ -48,7 +42,6 @@ const SUBJECT_LABELS: Record<string, string> = {
   bio: "Biology",
   biotech: "Biotechnology",
   eng: "Verbal Ability",
-  cs: "AI & Computer Science",
   ent: "Entrepreneurship",
   eco: "Quantitative Ability",
   fin: "Financial Literacy",
@@ -58,4 +51,15 @@ const SUBJECT_LABELS: Record<string, string> = {
 
 export function subjectIdToLabel(subjectId: string): string {
   return SUBJECT_LABELS[subjectId] ?? subjectId.toUpperCase();
+}
+
+/** Badge beside the discipline: TYPE for aptitude, CHAPTER/TOPIC for CBSE. */
+export function challengeGroupBadgeLabel(args: {
+  type?: string | null;
+  chapter?: string | null;
+}): string | null {
+  const typed = typeof args.type === "string" ? args.type.trim() : "";
+  if (typed) return typed;
+  const chapter = typeof args.chapter === "string" ? args.chapter.trim() : "";
+  return chapter || null;
 }

@@ -13,6 +13,8 @@ interface ChallengeHudProps {
   maxStrikes: number;
   questionIndex: number;
   questionTotal: number;
+  remainingAttempts?: number | null;
+  attemptLimit?: number;
   dotStates: EduBlastDotState[];
   onQuit: () => void;
 }
@@ -39,6 +41,8 @@ export function ChallengeHud({
   maxStrikes,
   questionIndex,
   questionTotal,
+  remainingAttempts = null,
+  attemptLimit = 10,
   dotStates,
   onQuit,
 }: ChallengeHudProps) {
@@ -77,6 +81,7 @@ export function ChallengeHud({
             )}
           >
             <Clock className="size-3.5 text-cyan-400" />
+            <span className="opacity-80">Session</span>
             {formatChallengeClock(sessionLeft)}
           </span>
 
@@ -91,6 +96,12 @@ export function ChallengeHud({
             <Flame className="size-3.5 text-amber-400 fill-amber-400/30" />
             {strikeCount}/{maxStrikes} Strikes
           </span>
+
+          {remainingAttempts != null ? (
+            <span className="inline-flex shrink-0 items-center rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-extrabold tabular-nums text-slate-200">
+              {remainingAttempts} of {attemptLimit} attempts
+            </span>
+          ) : null}
 
           <div className="hidden min-w-0 flex-1 items-center gap-3 md:flex">
             <div className="ebc-qprogress flex gap-1.5" aria-label="Question progress">

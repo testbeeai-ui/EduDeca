@@ -4,7 +4,8 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { createPortal } from "react-dom";
 import { CameraOff } from "lucide-react";
 
-import { loadDailyChallenge } from "@/lib/challenge/load-daily-challenge";
+import { ChallengeBlocked } from "@/components/challenge/challenge-blocked";
+import { ChallengeComingSoon } from "@/components/challenge/challenge-coming-soon";
 import { ChallengeHud } from "@/components/challenge/challenge-hud";
 import {
   ChallengeQuestionCard,
@@ -14,20 +15,32 @@ import { ChallengeSummary } from "@/components/challenge/challenge-summary";
 import { Button } from "@/components/ui/button";
 import { useChallengeAntiCapture } from "@/hooks/use-challenge-anti-capture";
 import { isTesterInvestorEmail } from "@/lib/admin/tester-allowlist";
-import { isLineupComplete, lineupIds } from "@/lib/disciplines/selection";
-import { useAppStore } from "@/store/useAppStore";
 import {
+  ChallengeLoadError,
+  loadDailyChallenge,
+  shouldRedirectChallengeLoadToSignin,
+  type ChallengeCompleteSaveResult,
+} from "@/lib/challenge/load-daily-challenge";
+import {
+  RESULT_FLASH_MS,
   buildEduBlastDotStates,
-  difficultyRatingToLabel,
-  remainingOptionsReviewMs,
+  challengeGroupBadgeLabel,
   subjectIdToLabel,
 } from "@/lib/challenge/meta";
 import {
   CHALLENGE_SPEC,
   challengeMaxStrikes,
-  challengePerQuestionTotalSec,
   challengeSessionDurationSec,
 } from "@/lib/challenge/spec";
+import {
+  STUDENT_TRIALS_PER_LEVEL,
+  isFailOutcome,
+  trialGateFromCode,
+  trialGateMessage,
+  type LevelTrialsSnapshot,
+} from "@/lib/challenge/trials";
+import { isLineupComplete, lineupIds } from "@/lib/disciplines/selection";
+import { useAppStore } from "@/store/useAppStore";
 import type {
   ChallengeCompletePayload,
   ChallengeQuestion,
@@ -38,14 +51,27 @@ import type {
 
 interface ChallengeSessionProps {
   campaignLevel: number;
-  onComplete: (payload: ChallengeCompletePayload) => void;
+  remainingAttempts?: number | null;
+  failCount?: number;
+  unlimitedTrials?: boolean;
+  onComplete: (
+    payload: ChallengeCompletePayload,
+  ) => void | Promise<ChallengeCompleteSaveResult | void>;
   onQuit: () => void;
   onOpenPaywall?: () => void;
 }
 
 type SessionPhase = "playing" | "summary";
 
-export function ChallengeSession({ campaignLevel, onComplete, onQuit, onOpenPaywall }: ChallengeSessionProps) {
+export function ChallengeSession({
+  campaignLevel,
+  remainingAttempts = null,
+  failCount = 0,
+  unlimitedTrials = false,
+  onComplete,
+  onQuit,
+  onOpenPaywall,
+}: ChallengeSessionProps) {
   const email = useAppStore((s) => s.email);
   const disciplineLineup = useAppStore((s) => s.disciplineLineup);
   const antiCapturePreference = useAppStore((s) => s.antiCaptureEnabled);
@@ -55,27 +81,27 @@ export function ChallengeSession({ campaignLevel, onComplete, onQuit, onOpenPayw
     isLineupComplete(disciplineLineup) ? lineupIds(disciplineLineup) : null,
   );
   const sessionSec = challengeSessionDurationSec(runLevel);
-  const perQuestionTotalSec = challengePerQuestionTotalSec();
+  const deferAnswerKey = !unlimitedTrials;
   // Free zone (L1–L3): screenshots allowed. Proctored tiers may still use the preference.
   const antiCaptureEnabled =
     runLevel >= 4 &&
     (isTesterInvestorEmail(email) ? antiCapturePreference : true);
 
   const maxStrikes = challengeMaxStrikes(runLevel);
-  const { readPhaseSec, optionsPhaseSec } = CHALLENGE_SPEC;
+  const { readPhaseSec } = CHALLENGE_SPEC;
 
   const [questions, setQuestions] = useState<ChallengeQuestion[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [comingSoon, setComingSoon] = useState(false);
+  const [blockedGate, setBlockedGate] = useState<ReturnType<typeof trialGateFromCode>>(null);
   const [loadingQuestions, setLoadingQuestions] = useState(true);
   const [index, setIndex] = useState(0);
   const [results, setResults] = useState<ChallengeResult[]>([]);
   const [sessionLeft, setSessionLeft] = useState(sessionSec);
   const [phase, setPhase] = useState<SessionPhase>("playing");
   const [summaryReason, setSummaryReason] = useState<ChallengeSummaryReason | null>(null);
-  const [perQuestionLeft, setPerQuestionLeft] = useState(perQuestionTotalSec);
-  const [resultReviewMs, setResultReviewMs] = useState(() =>
-    remainingOptionsReviewMs(optionsPhaseSec, optionsPhaseSec)
-  );
+  const [serverTrials, setServerTrials] = useState<LevelTrialsSnapshot | null>(null);
+  const [resultReviewMs, setResultReviewMs] = useState(RESULT_FLASH_MS);
   const [roundOutcomes, setRoundOutcomes] = useState<ChallengeRoundOutcome[]>([]);
   const [resultFlash, setResultFlash] = useState<ChallengeResultFlash | null>(null);
   const [confirmedIndex, setConfirmedIndex] = useState<number | null>(null);
@@ -85,13 +111,10 @@ export function ChallengeSession({ campaignLevel, onComplete, onQuit, onOpenPayw
   const questionsRef = useRef(questions);
   const indexRef = useRef(index);
   const phaseRef = useRef(phase);
-  const perQuestionLeftRef = useRef(perQuestionLeft);
   const sessionEndRef = useRef(false);
   const sessionStartedAtRef = useRef<number | null>(null);
-  const questionRoundDeadlineRef = useRef<number | null>(null);
   const questionRoundStartedAtRef = useRef<number | null>(null);
   const answeredThisRoundRef = useRef(false);
-  const questionTimeoutFiredRef = useRef(false);
   const advanceAfterResultRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isAdvancingRef = useRef(false);
   const terminalAppliedRef = useRef(false);
@@ -107,16 +130,14 @@ export function ChallengeSession({ campaignLevel, onComplete, onQuit, onOpenPayw
   useEffect(() => {
     phaseRef.current = phase;
   }, [phase]);
-  useEffect(() => {
-    perQuestionLeftRef.current = perQuestionLeft;
-  }, [perQuestionLeft]);
-
   // Load exactly once for this page visit — never auto-restart when store level/lineup changes.
   useEffect(() => {
     let cancelled = false;
     campaignLevelAtStartRef.current = runLevel;
     setLoadingQuestions(true);
     setLoadError(null);
+    setComingSoon(false);
+    setBlockedGate(null);
     setQuestions([]);
     setIndex(0);
     setResults([]);
@@ -138,9 +159,17 @@ export function ChallengeSession({ campaignLevel, onComplete, onQuit, onOpenPayw
       })
       .catch((err: unknown) => {
         if (cancelled) return;
+        if (shouldRedirectChallengeLoadToSignin(err)) {
+          window.location.replace("/signin?auth_notice=class_required");
+          return;
+        }
+        const comingSoonError = err instanceof ChallengeLoadError && err.comingSoon;
+        const gate = err instanceof ChallengeLoadError ? trialGateFromCode(err.gateCode) : null;
+        setComingSoon(comingSoonError);
+        setBlockedGate(gate);
         const message =
           err instanceof Error ? err.message : "Could not load today's questions";
-        setLoadError(message);
+        setLoadError(comingSoonError || gate ? null : message);
         setLoadingQuestions(false);
       });
 
@@ -150,11 +179,10 @@ export function ChallengeSession({ campaignLevel, onComplete, onQuit, onOpenPayw
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional mount-only load
   }, []);
 
-  const lockResultReviewFromRemaining = useCallback(() => {
-    const ms = remainingOptionsReviewMs(perQuestionLeftRef.current, optionsPhaseSec);
-    setResultReviewMs(ms);
-    return ms;
-  }, [optionsPhaseSec]);
+  const lockResultReview = useCallback(() => {
+    setResultReviewMs(RESULT_FLASH_MS);
+    return RESULT_FLASH_MS;
+  }, []);
 
   const pushLocalResult = useCallback((row: ChallengeResult) => {
     if (resultsRef.current.some((r) => r.questionId === row.questionId)) return;
@@ -165,6 +193,10 @@ export function ChallengeSession({ campaignLevel, onComplete, onQuit, onOpenPayw
 
   const finalizeRun = useCallback(
     (reason: "strikes" | "time" | "finish") => {
+      if (terminalAppliedRef.current || phaseRef.current !== "playing") return;
+      terminalAppliedRef.current = true;
+      sessionEndRef.current = true;
+
       const correct = resultsRef.current.filter((r) => r.isCorrect).length;
       const misses = resultsRef.current.filter((r) => !r.isCorrect).length;
       // Pass = finish the set with fewer than maxStrikes misses (L1: fail at 5/5).
@@ -182,16 +214,17 @@ export function ChallengeSession({ campaignLevel, onComplete, onQuit, onOpenPayw
       }
       setSummaryReason(summary);
 
-      if (!terminalAppliedRef.current) {
-        terminalAppliedRef.current = true;
+      void Promise.resolve(
         onComplete({
           reason: summary,
           correct,
           total: questionsRef.current.length,
           results: resultsRef.current,
           campaignLevelAtStart: campaignLevelAtStartRef.current,
-        });
-      }
+        }),
+      ).then((result) => {
+        if (result?.trials) setServerTrials(result.trials);
+      });
     },
     [maxStrikes, onComplete]
   );
@@ -215,49 +248,21 @@ export function ChallengeSession({ campaignLevel, onComplete, onQuit, onOpenPayw
     setConfirmedIndex(null);
   }, [finalizeRun, maxStrikes]);
 
-  const handleQuestionTimeout = useCallback(() => {
-    const q = questionsRef.current[indexRef.current];
-    if (!q || phaseRef.current !== "playing") return;
-    answeredThisRoundRef.current = true;
-    lockResultReviewFromRemaining();
-    questionRoundDeadlineRef.current = null;
-    const started = questionRoundStartedAtRef.current ?? Date.now();
-    const elapsed = Date.now() - started;
-    setRoundOutcomes((o) => [...o, "skip"]);
-    setResultFlash({
-      type: "skip",
-      message: "⏱ Time up — marked as unanswered",
-    });
-    pushLocalResult({
-      questionId: q.id,
-      subjectId: q.subjectId,
-      isCorrect: false,
-      timeTakenMs: elapsed,
-    });
-  }, [lockResultReviewFromRemaining, pushLocalResult]);
-
   useEffect(() => {
     if (phase !== "playing" || questions.length === 0) {
-      questionRoundDeadlineRef.current = null;
-      setPerQuestionLeft(perQuestionTotalSec);
       return;
     }
-    questionRoundDeadlineRef.current = Date.now() + perQuestionTotalSec * 1000;
     questionRoundStartedAtRef.current = Date.now();
     answeredThisRoundRef.current = false;
-    questionTimeoutFiredRef.current = false;
-    setPerQuestionLeft(perQuestionTotalSec);
-    setResultReviewMs(remainingOptionsReviewMs(optionsPhaseSec, optionsPhaseSec));
+    setResultReviewMs(RESULT_FLASH_MS);
     setResultFlash(null);
     isAdvancingRef.current = false;
-  }, [phase, index, questions.length, perQuestionTotalSec, optionsPhaseSec]);
+  }, [phase, index, questions.length]);
 
   useEffect(() => {
     if (phase !== "playing" || questions.length === 0) return;
     const sessionStart = sessionStartedAtRef.current;
     if (!sessionStart) return;
-
-    let timeoutInFlight = false;
 
     const tick = () => {
       if (phaseRef.current !== "playing") return;
@@ -268,47 +273,36 @@ export function ChallengeSession({ campaignLevel, onComplete, onQuit, onOpenPayw
       if (nextSessionLeft === 0 && !sessionEndRef.current) {
         sessionEndRef.current = true;
         finalizeRun("time");
-        return;
-      }
-
-      const qEnd = questionRoundDeadlineRef.current;
-      if (qEnd && !answeredThisRoundRef.current) {
-        const qLeft = Math.max(0, Math.ceil((qEnd - Date.now()) / 1000));
-        setPerQuestionLeft(qLeft);
-        if (qLeft === 0 && !questionTimeoutFiredRef.current && !timeoutInFlight) {
-          questionTimeoutFiredRef.current = true;
-          timeoutInFlight = true;
-          handleQuestionTimeout();
-          timeoutInFlight = false;
-        }
       }
     };
 
     const id = window.setInterval(tick, 250);
     tick();
     return () => window.clearInterval(id);
-  }, [phase, questions.length, index, sessionSec, finalizeRun, handleQuestionTimeout]);
+  }, [phase, questions.length, sessionSec, finalizeRun]);
 
   const handleAnswer = (selectedIndex: number, timeTakenMs: number) => {
     const q = questionsRef.current[indexRef.current];
     if (!q || answeredThisRoundRef.current) return;
     answeredThisRoundRef.current = true;
     setConfirmedIndex(selectedIndex);
-    lockResultReviewFromRemaining();
-    questionRoundDeadlineRef.current = null;
+    lockResultReview();
     const isCorrect = selectedIndex === q.correctIndex;
     pushLocalResult({
       questionId: q.id,
       subjectId: q.subjectId,
       isCorrect,
       timeTakenMs,
+      skipped: false,
     });
     setRoundOutcomes((o) => [...o, isCorrect ? "correct" : "wrong"]);
     setResultFlash({
       type: isCorrect ? "correct" : "wrong",
-      message: isCorrect
-        ? "✓ Correct!"
-        : `✗ Incorrect — correct answer was option ${q.correctIndex + 1}`,
+      message: deferAnswerKey
+        ? "Recorded"
+        : isCorrect
+          ? "✓ Correct!"
+          : `✗ Incorrect — correct answer was option ${q.correctIndex + 1}`,
     });
   };
 
@@ -316,8 +310,7 @@ export function ChallengeSession({ campaignLevel, onComplete, onQuit, onOpenPayw
     const q = questionsRef.current[indexRef.current];
     if (!q || answeredThisRoundRef.current || phaseRef.current !== "playing") return;
     answeredThisRoundRef.current = true;
-    lockResultReviewFromRemaining();
-    questionRoundDeadlineRef.current = null;
+    lockResultReview();
     const started = questionRoundStartedAtRef.current ?? Date.now();
     const elapsed = Date.now() - started;
     pushLocalResult({
@@ -325,13 +318,14 @@ export function ChallengeSession({ campaignLevel, onComplete, onQuit, onOpenPayw
       subjectId: q.subjectId,
       isCorrect: false,
       timeTakenMs: elapsed,
+      skipped: true,
     });
     setRoundOutcomes((o) => [...o, "skip"]);
     setResultFlash({
       type: "skip",
-      message: "→ Skipped — marked as unanswered",
+      message: deferAnswerKey ? "→ Skipped" : "→ Skipped — marked as unanswered",
     });
-  }, [lockResultReviewFromRemaining, pushLocalResult]);
+  }, [lockResultReview, pushLocalResult, deferAnswerKey]);
 
   const handleNext = useCallback(() => {
     if (isAdvancingRef.current) return;
@@ -373,9 +367,22 @@ export function ChallengeSession({ campaignLevel, onComplete, onQuit, onOpenPayw
   }, []);
 
   const handleQuit = () => {
+    if (phaseRef.current !== "playing") return;
+    if (terminalAppliedRef.current) return;
+    terminalAppliedRef.current = true;
+    sessionEndRef.current = true;
     setPhase("summary");
     setSummaryReason("quit");
-    onQuit();
+    const correct = resultsRef.current.filter((r) => r.isCorrect).length;
+    void Promise.resolve(
+      onComplete({
+        reason: "quit",
+        correct,
+        total: questionsRef.current.length,
+        results: resultsRef.current,
+        campaignLevelAtStart: campaignLevelAtStartRef.current,
+      }),
+    );
   };
 
   const q = questions[index];
@@ -395,6 +402,21 @@ export function ChallengeSession({ campaignLevel, onComplete, onQuit, onOpenPayw
     );
   }
 
+  if (comingSoon) {
+    return <ChallengeComingSoon level={runLevel} onBack={onQuit} />;
+  }
+
+  if (blockedGate) {
+    const copy = trialGateMessage(blockedGate);
+    return (
+      <ChallengeBlocked
+        title={copy.code === "TRIALS_EXHAUSTED" ? "No attempts left" : "Not available"}
+        description={copy.error}
+        onBack={onQuit}
+      />
+    );
+  }
+
   if (loadError) {
     return (
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 px-4 text-center">
@@ -408,6 +430,16 @@ export function ChallengeSession({ campaignLevel, onComplete, onQuit, onOpenPayw
   }
 
   if (phase === "summary" && summaryReason) {
+    const optimisticRemaining = isFailOutcome(summaryReason)
+      ? Math.max(0, (remainingAttempts ?? STUDENT_TRIALS_PER_LEVEL) - 1)
+      : (remainingAttempts ?? STUDENT_TRIALS_PER_LEVEL);
+    const remainingAfterThisRun = unlimitedTrials
+      ? null
+      : (serverTrials?.remaining ?? optimisticRemaining);
+    const failCountAfterThisRun =
+      serverTrials?.failCount ??
+      (isFailOutcome(summaryReason) ? failCount + 1 : failCount);
+
     return (
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-2 py-4">
         <ChallengeSummary
@@ -419,6 +451,9 @@ export function ChallengeSession({ campaignLevel, onComplete, onQuit, onOpenPayw
             summaryReason === "won" && campaignLevelAtStartRef.current === 3
           }
           onOpenPaywall={() => onOpenPaywall?.()}
+          remainingAfterThisRun={remainingAfterThisRun}
+          failCountAfterThisRun={failCountAfterThisRun}
+          unlimitedTrials={unlimitedTrials}
         />
       </div>
     );
@@ -426,11 +461,7 @@ export function ChallengeSession({ campaignLevel, onComplete, onQuit, onOpenPayw
 
 
   if (!q) {
-    return (
-      <div className="flex min-h-0 flex-1 items-center justify-center text-muted-foreground">
-        No questions available for this level.
-      </div>
-    );
+    return <ChallengeComingSoon level={runLevel} onBack={onQuit} />;
   }
 
   return (
@@ -442,6 +473,8 @@ export function ChallengeSession({ campaignLevel, onComplete, onQuit, onOpenPayw
         maxStrikes={maxStrikes}
         questionIndex={index}
         questionTotal={questions.length}
+        remainingAttempts={unlimitedTrials ? null : remainingAttempts}
+        attemptLimit={STUDENT_TRIALS_PER_LEVEL}
         dotStates={dotStates}
         onQuit={handleQuit}
       />
@@ -452,10 +485,13 @@ export function ChallengeSession({ campaignLevel, onComplete, onQuit, onOpenPayw
           questionIndex={index}
           questionTotal={questions.length}
           subjectLabel={subjectIdToLabel(q.subjectId)}
-          difficultyLabel={difficultyRatingToLabel(q.difficultyRating ?? 3)}
-          secondsLeft={perQuestionLeft}
+          groupLabel={challengeGroupBadgeLabel({
+            type: q.type,
+            chapter: q.chapter,
+          })}
+          secondsLeft={sessionLeft}
           readPhaseSec={readPhaseSec}
-          optionsPhaseSec={optionsPhaseSec}
+          optionsPhaseSec={sessionSec}
           correctCount={correctCount}
           wrongCount={wrongCount}
           skipCount={skipCount}
@@ -467,6 +503,8 @@ export function ChallengeSession({ campaignLevel, onComplete, onQuit, onOpenPayw
           resultFlash={resultFlash}
           resultPauseMs={resultReviewMs}
           watermarkText="EduDeca"
+          revealDuringPlay={!deferAnswerKey}
+          showExplanation={!deferAnswerKey}
         />
       </div>
 
