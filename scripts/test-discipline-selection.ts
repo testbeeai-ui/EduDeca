@@ -32,9 +32,9 @@ check("empty lineup is not complete until Track A", isLineupComplete(fresh) === 
 check("empty lineup leaves Track A empty", fresh[TRACK_A_SLOT] === null);
 check("empty lineup leaves Track B empty", fresh[TRACK_B_SLOT] === null);
 
-const withCs = { ...fresh, [ENTREPRENEURSHIP_SLOT]: "cs" as const };
-const locked = lockEntrepreneurshipSlot(withCs);
-check("lockEntrepreneurshipSlot overwrites CS with ent", locked[ENTREPRENEURSHIP_SLOT] === "ent");
+const withWrongSlot5 = { ...fresh, [ENTREPRENEURSHIP_SLOT]: "phy" as const };
+const locked = lockEntrepreneurshipSlot(withWrongSlot5);
+check("lockEntrepreneurshipSlot overwrites slot 5 with ent", locked[ENTREPRENEURSHIP_SLOT] === "ent");
 check("lockEntrepreneurshipSlot is a no-op when already ent", lockEntrepreneurshipSlot(fresh) === fresh);
 
 const math = selectTrackOption(fresh, "A", "mat");
@@ -60,7 +60,7 @@ check("clicking Track A again clears both family slots", cleared[TRACK_A_SLOT] =
 check("unchecking Track A keeps Entrepreneurship locked", cleared[ENTREPRENEURSHIP_SLOT] === "ent");
 check(
   "Track C cannot unset Entrepreneurship",
-  selectTrackOption(withCs, "C", "cs")[ENTREPRENEURSHIP_SLOT] === "ent",
+  selectTrackOption(withWrongSlot5, "C", "ent")[ENTREPRENEURSHIP_SLOT] === "ent",
 );
 
 const stored = lineupIds(math);
@@ -70,7 +70,7 @@ check(
 );
 
 const fromCs = validateLineup(["phy", "che", "mat", "amat", "cs", "eng", "eco", "log", "gk", "fin"]);
-check("validateLineup rewrites stored CS to Entrepreneurship", fromCs?.[5] === "ent");
+check("validateLineup rewrites legacy CS id to Entrepreneurship", fromCs?.[5] === "ent");
 check("validateLineup keeps a complete 10 after CS rewrite", fromCs !== null && isLineupComplete(fromCs));
 
 check(

@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start -p 3001",
     "lint": "eslint",
-    "test": "npx tsx --test lib/admin/invite-dispatch.test.ts lib/college/verification-decision.test.ts lib/email/emailDailyCap.test.ts lib/email/studentWelcomeEmailTemplate.test.ts lib/mock-test/catalog.test.ts lib/mock-test/progress-store.test.ts lib/mock-test/handoff.test.ts lib/mock-test/attempt-sync.test.ts",
+    "test": "npx tsx --test lib/admin/invite-dispatch.test.ts lib/college/verification-decision.test.ts lib/email/emailDailyCap.test.ts lib/email/studentWelcomeEmailTemplate.test.ts lib/mock-test/catalog.test.ts lib/mock-test/progress-store.test.ts lib/mock-test/handoff.test.ts lib/mock-test/attempt-sync.test.ts lib/challenge/spec.test.ts lib/challenge/meta.test.ts lib/challenge/level4-gate-copy.test.ts lib/challenge/question-seen.test.ts lib/challenge/class-lineup-scenarios.test.ts lib/challenge/coverage.test.ts lib/challenge/load-daily-challenge.test.ts lib/challenge/availability.test.ts lib/supabase/fetch-all.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

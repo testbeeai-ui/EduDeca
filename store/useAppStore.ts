@@ -312,7 +312,6 @@ export function useProgressUser() {
 }
 
 export function useSubjectsWithProgress() {
-  const subjectLevels = useAppStore((s) => s.subjectLevels);
   const campaignLevel = useAppStore((s) => s.campaignLevel);
   const disciplineLineup = useAppStore((s) => s.disciplineLineup);
 
@@ -324,10 +323,11 @@ export function useSubjectsWithProgress() {
     ? selectedIds
         .map((id) => subjects.find((s) => s.id === id))
         .filter((s): s is (typeof subjects)[number] => Boolean(s))
-    : subjects.filter((s) => s.id !== "cs").slice(0, 10);
+    : subjects.slice(0, 10);
 
+  // Same campaign level on every discipline — matches Daily Challenge progression.
   return catalog.map((s) => ({
     ...s,
-    level: Math.max(subjectLevels[s.id] ?? s.level, campaignLevel),
+    level: campaignLevel,
   }));
 }

@@ -1,43 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import {
-  attemptSeed,
-  shuffleChallengeOptions,
-  shuffleWithSeed,
-} from "@/lib/challenge/shuffle";
-import { LINEUP_SIZE, type DisciplineId } from "@/data/disciplines";
+import { DISCIPLINE_IDS, LINEUP_SIZE, type DisciplineId } from "@/data/disciplines";
+import { isTesterInvestorEmail } from "@/lib/admin/tester-allowlist";
+import { CLASS_LEVEL_REQUIRED, QUESTIONS_UNAVAILABLE } from "@/lib/challenge/availability";
 import { parseQuestionOptions } from "@/lib/challenge/parse-options";
+import { pickUnseenRound } from "@/lib/challenge/question-seen";
+import { listSeenQuestionIds } from "@/lib/challenge/question-seen-store";
+import { attemptSeed, shuffleChallengeOptions } from "@/lib/challenge/shuffle";
+import {
+  challengeGroupsPerDiscipline,
+  challengeQuestionCount,
+} from "@/lib/challenge/spec";
+import { countLevelFailTrials } from "@/lib/challenge/trial-store";
+import { gateStudentLevelAccess, trialGateMessage } from "@/lib/challenge/trials";
 import { isLineupComplete, lineupIds, validateLineup } from "@/lib/disciplines/selection";
 import { getOrCreateProgress } from "@/lib/progress/server";
-import { createSupabaseServer } from "@/lib/supabase/server";
+import { fetchAllPaged } from "@/lib/supabase/fetch-all";
+import { requireApiUser } from "@/lib/supabase/require-user";
 import type { ChallengeQuestion } from "@/lib/types";
-
-const ALL_SUBJECTS: DisciplineId[] = [
-  "phy",
-  "che",
-  "mat",
-  "amat",
-  "bio",
-  "biotech",
-  "cs",
-  "ent",
-  "eng",
-  "eco",
-  "log",
-  "gk",
-  "fin",
-];
 
 type QuestionRow = {
   id: string;
-  subject_id: string;
+  discipline_id: string;
   stem: string;
   options: string[] | unknown;
   correct_index: number;
   explanation: string | null;
   difficulty_rating: number | null;
   level: number;
-  sort_order: number;
+  published?: boolean;
+  type: string | null;
+  chapter: string | null;
+  class_level: "XI" | "XII" | null;
 };
 
 function parseLevel(raw: string | null): number | null {
@@ -45,6 +39,18 @@ function parseLevel(raw: string | null): number | null {
   const n = Number(raw);
   if (!Number.isInteger(n) || n < 1 || n > 10) return null;
   return n;
+}
+
+function comingSoonResponse(level: number) {
+  return NextResponse.json(
+    {
+      error: `Level ${level} questions are coming soon`,
+      code: QUESTIONS_UNAVAILABLE,
+      comingSoon: true,
+      level,
+    },
+    { status: 404 },
+  );
 }
 
 function parseDisciplinesParam(raw: string | null): DisciplineId[] | null {
@@ -60,10 +66,9 @@ function parseDisciplinesParam(raw: string | null): DisciplineId[] | null {
 
 
 /**
- * One MCQ per selected Decathlon discipline for the campaign level.
- * Every attempt reshuffles question order + option order (streak / skip-wait / retry).
- * If a subject has multiple published items at that level, one is picked at random.
- * Never mixes questions from another level into this pack.
+ * One unused published MCQ per lineup discipline at this campaign level.
+ * Submitted cards (correct, wrong, skip) never repeat for this student.
+ * Question order and option order are reshuffled each attempt.
  */
 export async function GET(request: NextRequest) {
   const level = parseLevel(request.nextUrl.searchParams.get("level"));
@@ -71,25 +76,49 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Invalid level" }, { status: 400 });
   }
 
-  // Free-zone bank is L1–L3 only; never mix another level's questions.
-  const questionLevel = Math.min(Math.max(level, 1), 3);
-  const supabase = await createSupabaseServer();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
+  const auth = await requireApiUser();
+  if (!auth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const { supabase, user } = auth;
+
+  const { data: profile, error: profileError } = await supabase
+    .from("edudeca_profiles")
+    .select("class_level")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profileError) {
+    return NextResponse.json({ error: "Failed to load profile" }, { status: 500 });
+  }
+
+  const rawClass = profile && typeof profile.class_level === "number" ? profile.class_level : null;
+  if (rawClass !== 11 && rawClass !== 12) {
+    return NextResponse.json(
+      { error: "Choose Class 11 or Class 12 to start", code: CLASS_LEVEL_REQUIRED },
+      { status: 409 },
+    );
+  }
+  const studentClass = rawClass === 11 ? "XI" : "XII";
+
+  const progress = await getOrCreateProgress(supabase, user);
+  const unlimited = isTesterInvestorEmail(user.email);
+  const failCount = await countLevelFailTrials(supabase, user.id, level);
+  const gate = gateStudentLevelAccess({
+    requestedLevel: level,
+    campaignLevel: progress.campaignLevel,
+    todayCompleted: progress.todayCompleted,
+    failCount,
+    unlimited,
+  });
+  if (gate !== "ok") {
+    return NextResponse.json(trialGateMessage(gate), { status: 403 });
   }
 
   let subjectOrder: DisciplineId[] | null = null;
-  try {
-    const progress = await getOrCreateProgress(supabase, user);
-    const fromDb = progress.disciplines ? validateLineup(progress.disciplines) : null;
-    if (fromDb && isLineupComplete(fromDb)) {
-      subjectOrder = lineupIds(fromDb);
-    }
-  } catch (err) {
-    console.warn("[challenge/questions] progress lookup", err);
+  const fromDb = progress.disciplines ? validateLineup(progress.disciplines) : null;
+  if (fromDb && isLineupComplete(fromDb)) {
+    subjectOrder = lineupIds(fromDb);
   }
 
   if (!subjectOrder) {
@@ -100,86 +129,89 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "No disciplines lineup" }, { status: 400 });
   }
 
-  const allowed = new Set(ALL_SUBJECTS);
+  const allowed = new Set<DisciplineId>(DISCIPLINE_IDS);
   if (subjectOrder.some((id) => !allowed.has(id))) {
     return NextResponse.json({ error: "Invalid disciplines" }, { status: 400 });
   }
 
-  const { data, error } = await supabase
-    .from("edudeca_questions")
-    .select(
-      "id, subject_id, stem, options, correct_index, explanation, difficulty_rating, level, sort_order",
-    )
-    .eq("level", questionLevel)
-    .eq("published", true)
-    .in("subject_id", subjectOrder);
-
-  if (error) {
-    console.error("[challenge/questions]", error);
+  let rows: QuestionRow[];
+  try {
+    rows = await fetchAllPaged<QuestionRow>((from, to) =>
+      supabase
+        .from("edudeca_discipline_questions")
+        .select(
+          "id, discipline_id, stem, options, correct_index, explanation, difficulty_rating, level, published, type, chapter, class_level",
+        )
+        .eq("level", level)
+        .eq("published", true)
+        .in("discipline_id", subjectOrder)
+        .range(from, to),
+    );
+  } catch (err) {
+    console.error("[challenge/questions]", err);
     return NextResponse.json({ error: "Failed to load questions" }, { status: 500 });
   }
 
-  const rows = (data ?? []) as QuestionRow[];
-  if (rows.length === 0) {
-    return NextResponse.json(
-      { error: `No questions published for level ${questionLevel}` },
-      { status: 404 },
-    );
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  let seenIds: Set<string>;
+  try {
+    seenIds = await listSeenQuestionIds(supabase, user.id, level);
+  } catch {
+    return NextResponse.json({ error: "Failed to load questions" }, { status: 500 });
   }
 
-  const bySubject = new Map<string, QuestionRow[]>();
-  for (const row of rows) {
-    // Strict level guard — never leak another level into this pack.
-    if (row.level !== questionLevel) continue;
-    const list = bySubject.get(row.subject_id) ?? [];
-    list.push(row);
-    bySubject.set(row.subject_id, list);
+  const seed = attemptSeed(level, user.id, subjectOrder.join(","));
+  const perDiscipline = challengeGroupsPerDiscipline(level);
+  const expected = challengeQuestionCount(level);
+  const picked = pickUnseenRound({
+    bank: rows.map((row) => ({
+      id: row.id,
+      disciplineId: row.discipline_id,
+      level: row.level,
+      published: true,
+      type: row.type,
+      chapter: row.chapter,
+      classLevel:
+        row.class_level === "XI" || row.class_level === "XII" ? row.class_level : null,
+    })),
+    lineupIds: subjectOrder,
+    seenIds,
+    level,
+    seed,
+    studentClass,
+    perDiscipline,
+  });
+
+  if (!picked.ok) {
+    return comingSoonResponse(level);
   }
 
-  const seed = attemptSeed(questionLevel, subjectOrder.join(","));
-  const picked: ChallengeQuestion[] = [];
-  const missing: string[] = [];
-
-  subjectOrder.forEach((subjectId, idx) => {
-    const pool = bySubject.get(subjectId) ?? [];
-    if (pool.length === 0) {
-      missing.push(subjectId);
-      return;
-    }
-    const pickIndex = (seed + idx * 17) % pool.length;
-    const row = pool[pickIndex]!;
+  const questions: ChallengeQuestion[] = [];
+  picked.questions.forEach((item, idx) => {
+    const row = byId.get(item.id);
+    if (!row || row.level !== level) return;
     const options = parseQuestionOptions(row.options);
-    if (options.length < 2) {
-      missing.push(subjectId);
-      return;
-    }
+    if (options.length !== 4) return;
     const base: ChallengeQuestion = {
       id: row.id,
-      subjectId: row.subject_id,
+      subjectId: row.discipline_id,
       stem: row.stem,
       options,
       correctIndex: row.correct_index,
       explanation: row.explanation ?? undefined,
-      difficultyRating: row.difficulty_rating ?? questionLevel,
+      difficultyRating: row.difficulty_rating ?? undefined,
+      type: row.type ?? null,
+      chapter: row.chapter ?? null,
     };
-    picked.push(shuffleChallengeOptions(base, seed + idx * 31));
+    questions.push(shuffleChallengeOptions(base, seed + idx * 31));
   });
 
-  if (picked.length !== LINEUP_SIZE) {
-    return NextResponse.json(
-      {
-        error: `Expected ${LINEUP_SIZE} subjects, got ${picked.length}`,
-        missing,
-      },
-      { status: 500 },
-    );
+  if (questions.length !== expected) {
+    return comingSoonResponse(level);
   }
 
-  // Randomize question order every attempt — not fixed lineup / sort_order.
-  const questions = shuffleWithSeed(picked, seed + 99);
-
   return NextResponse.json({
-    level: questionLevel,
+    level: level,
     campaignLevel: level,
     disciplines: subjectOrder,
     seed,

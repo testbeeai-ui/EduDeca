@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
+import { StartChallengeControl } from "@/components/challenge/start-challenge-control";
 import { MotionFade } from "@/components/common/motion-fade";
 import { LeaderboardPreview } from "@/components/home/leaderboard-preview";
 import { SquadCard } from "@/components/home/squad-card";
@@ -157,9 +158,11 @@ export default function HomePage() {
               </p>
 
               <div className="hero-ctas-row">
-                <Link href="/challenge" className="btn-ed-primary">
-                  ⚡ Start Level {progress.level} Challenge →
-                </Link>
+                <StartChallengeControl
+                  className="btn-ed-primary"
+                  comingSoonClassName="inline-flex items-center justify-center gap-2 rounded-2xl border border-amber-400/30 bg-amber-500/10 px-6 py-3 font-extrabold text-amber-200"
+                  label={`⚡ Start Level ${progress.level} Challenge →`}
+                />
 
                 <a href="#journey" className="btn-ed-outline">
                   See how it works
@@ -227,9 +230,11 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                <Link href="/challenge" className="hc-cta">
-                  ⚡ Start Level {progress.level} Challenge →
-                </Link>
+                <StartChallengeControl
+                  className="hc-cta"
+                  comingSoonClassName="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm font-extrabold text-amber-100"
+                  label={`⚡ Start Level ${progress.level} Challenge →`}
+                />
                 <div className="hc-note">
                   This is a live preview — your own ring starts at Level 1 on day one.
                 </div>
@@ -390,9 +395,11 @@ export default function HomePage() {
             someone else climbs past you.
           </p>
           <div className="viral-ctas">
-            <Link href="/challenge" className="btn-ed-primary">
-              ⚡ Start Free Challenge →
-            </Link>
+            <StartChallengeControl
+              className="btn-ed-primary"
+              comingSoonClassName="inline-flex items-center justify-center gap-2 rounded-2xl border border-amber-400/30 bg-amber-500/10 px-6 py-3 font-extrabold text-amber-200"
+              label="⚡ Start Free Challenge →"
+            />
             <Link href="/leaderboard" className="btn-ed-outline">
               View Leaderboard
             </Link>

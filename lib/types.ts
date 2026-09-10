@@ -35,6 +35,7 @@ export interface LevelNode {
   accent: LevelAccent;
   xp?: number;
   price?: string;
+  comingSoon?: boolean;
 }
 
 export interface LevelTierSummary {
@@ -119,6 +120,10 @@ export interface ChallengeQuestion {
   correctIndex: number;
   explanation?: string;
   difficultyRating?: number;
+  /** Aptitude TYPE heading when present. */
+  type?: string | null;
+  /** CBSE CHAPTER / TOPIC / numbered title when present. */
+  chapter?: string | null;
 }
 
 export interface ChallengeResult {
@@ -126,6 +131,7 @@ export interface ChallengeResult {
   subjectId: string;
   isCorrect: boolean;
   timeTakenMs: number;
+  skipped?: boolean;
 }
 
 export type ChallengeSummaryReason =

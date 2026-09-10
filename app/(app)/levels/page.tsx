@@ -4,6 +4,8 @@ import { LevelTimeline } from "@/components/levels/level-timeline";
 import { ProgressHeader } from "@/components/levels/progress-header";
 import { TierSummaryCards } from "@/components/levels/tier-summary-cards";
 import { levelTiers } from "@/data/levels";
+import { useQuestionAvailability } from "@/hooks/use-question-availability";
+import { isLevelReady } from "@/lib/challenge/availability";
 import { getLevelPath } from "@/lib/challenge/get-level-path";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -11,7 +13,11 @@ export default function LevelsPage() {
   const campaignLevel = useAppStore((s) => s.campaignLevel);
   const isProctoredPaid = useAppStore((s) => s.isProctoredPaid);
   const freeZoneComplete = useAppStore((s) => s.freeZoneComplete);
-  const levels = getLevelPath(campaignLevel, isProctoredPaid, freeZoneComplete);
+  const availability = useQuestionAvailability();
+  const levels = getLevelPath(campaignLevel, isProctoredPaid, freeZoneComplete).map((node) => ({
+    ...node,
+    comingSoon: isLevelReady(availability, node.number) === false,
+  }));
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col space-y-6 pb-16">

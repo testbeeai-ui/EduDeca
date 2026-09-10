@@ -124,7 +124,8 @@ export function validateLineup(ids: unknown): DisciplineLineup | null {
   const allowed = new Set(Object.keys(DISCIPLINES));
   const lineup = emptyLineup();
   for (let i = 0; i < LINEUP_SIZE; i += 1) {
-    const id = ids[i];
+    let id = ids[i];
+    if (id === "cs") id = "ent";
     if (typeof id !== "string" || !allowed.has(id)) return null;
     lineup[i + 1] = id as DisciplineId;
   }

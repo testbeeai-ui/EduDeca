@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
 
+import { AUTH_COOKIE_MAX_AGE_SEC, persistAuthCookieOptions } from "@/lib/supabase/auth-cookie";
 import { getCollegeApplicationForUser } from "@/lib/college/registry-store";
 import {
   AUTH_NEXT_COOKIE,
@@ -38,11 +39,11 @@ export async function GET(request: NextRequest) {
 
   const applySessionCookies = (response: NextResponse) => {
     for (const { name, value, options } of pendingCookies) {
-      response.cookies.set(name, value, {
+      response.cookies.set(name, value, persistAuthCookieOptions({
         ...options,
         path: options?.path ?? "/",
         sameSite: options?.sameSite ?? "lax",
-      });
+      }));
     }
     return response;
   };
@@ -75,6 +76,11 @@ export async function GET(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      cookieOptions: {
+        path: "/",
+        sameSite: "lax",
+        maxAge: AUTH_COOKIE_MAX_AGE_SEC,
+      },
       cookies: {
         getAll() {
           return request.cookies.getAll();

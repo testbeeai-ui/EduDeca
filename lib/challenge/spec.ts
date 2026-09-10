@@ -7,21 +7,35 @@ export const CHALLENGE_SPEC = {
   minCorrect: 8,
   /** Default / Level 3+ strike limit. Prefer `challengeMaxStrikes(level)`. */
   maxStrikes: 3,
-  sessionMinutes: 10,
+  sessionMinutes: 5,
   readPhaseSec: 0,
   optionsPhaseSec: 60,
 } as const;
 
 /**
  * Free-zone strike limit (wrong + unanswered).
- * Hitting this count ends the run as a fail immediately (e.g. 5/5 on L1).
+ * Hitting this count ends the run as a fail immediately.
  * Finish the set with fewer strikes → pass.
- * Level 1: 5 · Level 2: 4 · Level 3+: 3
+ * Level 1: 5 · Level 2: 7 · Level 3+: 10
  */
 export function challengeMaxStrikes(campaignLevel: number): number {
   const level = Math.max(1, Math.floor(campaignLevel) || 1);
   if (level <= 1) return 5;
-  if (level === 2) return 4;
+  if (level === 2) return 7;
+  return 10;
+}
+
+export function challengeQuestionCount(campaignLevel: number): number {
+  const level = Math.max(1, Math.floor(campaignLevel) || 1);
+  if (level <= 1) return 10;
+  if (level === 2) return 20;
+  return 30;
+}
+
+export function challengeGroupsPerDiscipline(campaignLevel: number): number {
+  const level = Math.max(1, Math.floor(campaignLevel) || 1);
+  if (level <= 1) return 1;
+  if (level === 2) return 2;
   return 3;
 }
 
@@ -31,20 +45,23 @@ export function challengeAllowedMisses(campaignLevel: number): number {
 }
 
 /**
- * Total exam session duration in seconds per level:
- * Level 1: 5 minutes (300s)
- * Level 2: 7 minutes (420s)
- * Level 3+: 10 minutes (600s)
+ * Whole-level session clock (one timer for the run, not per card):
+ * Level 1: 5 minutes
+ * Level 2: 10 minutes
+ * Level 3+: 20 minutes
  */
 export function challengeSessionDurationSec(campaignLevel: number = 1): number {
   const level = Math.max(1, Math.floor(campaignLevel) || 1);
-  if (level <= 1) return 5 * 60; // 5 minutes
-  if (level === 2) return 7 * 60; // 7 minutes
-  return 10 * 60; // 10 minutes
+  if (level <= 1) return 5 * 60;
+  if (level === 2) return 10 * 60;
+  return 20 * 60;
 }
 
-export function challengePerQuestionTotalSec(): number {
-  return CHALLENGE_SPEC.optionsPhaseSec;
+/** @deprecated Per-card clocks are unused. The run uses `challengeSessionDurationSec`. */
+export function challengePerQuestionTotalSec(campaignLevel: number = 1): number {
+  return Math.floor(
+    challengeSessionDurationSec(campaignLevel) / challengeQuestionCount(campaignLevel),
+  );
 }
 
 export function formatChallengeClock(sec: number): string {

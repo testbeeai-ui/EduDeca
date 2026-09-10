@@ -7,6 +7,16 @@ const REFERRAL_CODE_RE = /^ED-\d{2}([0-9][A-Z]){4}$/;
 
 export const EDUDECA_PENDING_REF_COOKIE = "edudeca_pending_ref";
 
+export function hasPendingReferralCookie(): boolean {
+  if (typeof document === "undefined") return false;
+  return document.cookie.split(";").some((part) => {
+    const trimmed = part.trim();
+    if (!trimmed.startsWith(`${EDUDECA_PENDING_REF_COOKIE}=`)) return false;
+    const value = decodeURIComponent(trimmed.slice(EDUDECA_PENDING_REF_COOKIE.length + 1));
+    return Boolean(normalizeEduDecaReferralCode(value));
+  });
+}
+
 export function normalizeEduDecaReferralCode(
   code: string | null | undefined,
 ): string | null {

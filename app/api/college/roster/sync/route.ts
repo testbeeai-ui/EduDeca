@@ -1,21 +1,21 @@
 import { NextResponse } from "next/server";
 
 import { syncStudentOntoMatchingCollegeRoster } from "@/lib/college/registry-store";
-import { createSupabaseServer } from "@/lib/supabase/server";
+import { requireApiUser } from "@/lib/supabase/require-user";
 
 export async function POST() {
-  const supabase = await createSupabaseServer();
-  const { data: authData, error: authError } = await supabase.auth.getUser();
-  if (authError || !authData.user) {
+  const auth = await requireApiUser();
+  if (!auth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const { supabase, user } = auth;
 
-  const userId = authData.user.id;
-  const meta = authData.user.user_metadata ?? {};
+  const userId = user.id;
+  const meta = user.user_metadata ?? {};
   const displayName =
     (typeof meta.full_name === "string" && meta.full_name) ||
     (typeof meta.name === "string" && meta.name) ||
-    authData.user.email?.split("@")[0] ||
+    user.email?.split("@")[0] ||
     "Student";
 
   const { data: profile } = await supabase

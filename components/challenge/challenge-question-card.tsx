@@ -4,8 +4,12 @@ import { useEffect, useRef, useState } from "react";
 
 import { MathText } from "@/components/common/math-text";
 import { RESULT_FLASH_MS } from "@/lib/challenge/meta";
+import { formatChallengeClock } from "@/lib/challenge/spec";
 import type { ChallengeQuestion } from "@/lib/types";
 import { cn } from "@/lib/utils";
+
+const RING_RADIUS = 22;
+const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
 export type ChallengeResultFlash = {
   type: "correct" | "wrong" | "skip";
@@ -17,7 +21,7 @@ export interface ChallengeQuestionCardProps {
   questionIndex: number;
   questionTotal: number;
   subjectLabel: string;
-  difficultyLabel: string;
+  groupLabel?: string | null;
   secondsLeft: number;
   readPhaseSec: number;
   optionsPhaseSec: number;
@@ -36,6 +40,7 @@ export interface ChallengeQuestionCardProps {
   confirmedIndex?: number | null;
   disableAutoAdvance?: boolean;
   resultPauseMs?: number;
+  revealDuringPlay?: boolean;
 }
 
 export function ChallengeQuestionCard({
@@ -43,7 +48,10 @@ export function ChallengeQuestionCard({
   questionIndex,
   questionTotal,
   subjectLabel,
-  difficultyLabel,
+  groupLabel = null,
+  secondsLeft,
+  readPhaseSec,
+  optionsPhaseSec,
   correctCount,
   wrongCount,
   skipCount,
@@ -59,6 +67,7 @@ export function ChallengeQuestionCard({
   confirmedIndex,
   disableAutoAdvance = false,
   resultPauseMs = RESULT_FLASH_MS,
+  revealDuringPlay = true,
 }: ChallengeQuestionCardProps) {
   const [localSelected, setLocalSelected] = useState<number | null>(null);
   const startTimeRef = useRef(Date.now());
@@ -96,8 +105,41 @@ export function ChallengeQuestionCard({
   const explanation = question.explanation?.trim() ?? "";
 
   const canSelect = !answered && !disableInteraction;
-  const showReveal = answered;
   const pickedIndex = confirmedIndex ?? selectedIndex;
+
+  const isReadPhase = !answered && readPhaseSec > 0 && secondsLeft > optionsPhaseSec;
+  const isAnswerPhase = !answered && !isReadPhase && secondsLeft > 0;
+  const isUrgent = isAnswerPhase && secondsLeft <= 60;
+  const phaseBannerClass = answered ? "read" : isUrgent ? "urgent" : isReadPhase ? "read" : "answer";
+  const phaseLabel = answered
+    ? "RESULT"
+    : isUrgent
+      ? "ANSWER NOW"
+      : isReadPhase
+        ? "READ-ONLY PHASE"
+        : "LEVEL TIMER";
+  const untilChoicesSec = Math.max(0, secondsLeft - optionsPhaseSec);
+  const phaseTimerDisplay = formatChallengeClock(
+    isReadPhase ? untilChoicesSec : secondsLeft,
+  );
+  const phaseSub = answered
+    ? (resultFlash?.message ?? "Recorded")
+    : isReadPhase
+      ? "Answer options unlock in"
+      : "Finish this level before time runs out";
+  const ringTotal = isReadPhase ? readPhaseSec : Math.max(1, optionsPhaseSec);
+  const ringCurrent = isReadPhase
+    ? untilChoicesSec
+    : Math.max(0, secondsLeft);
+  const ringRatio = ringTotal > 0 ? Math.max(0, Math.min(1, ringCurrent / ringTotal)) : 0;
+  const ringOffset = RING_CIRCUMFERENCE * (1 - ringRatio);
+  const ringStroke = answered
+    ? "var(--ebc-teal)"
+    : isReadPhase
+      ? "var(--ebc-blue)"
+      : isUrgent
+        ? "var(--ebc-coral)"
+        : "var(--ebc-teal)";
 
   const handleSelect = (i: number) => {
     if (!canSelect) return;
@@ -110,9 +152,7 @@ export function ChallengeQuestionCard({
     onSkip();
   };
 
-  const confirmLabel = answered
-    ? "Next Question →"
-    : "Select an option to answer";
+  const confirmLabel = answered ? "Next Question →" : "Select an option to answer";
 
   const resultFlashClass =
     resultFlash?.type === "correct"
@@ -140,7 +180,11 @@ export function ChallengeQuestionCard({
         <div className="ebc-card-inner relative z-[2]">
           <div className="ebc-card-topbar">
             <div className="ebc-subject-tag">{subjectLabel}</div>
-            <div className="ebc-difficulty">{difficultyLabel}</div>
+            {groupLabel ? (
+              <div className="ebc-group-tag" title={groupLabel}>
+                {groupLabel}
+              </div>
+            ) : null}
             <div className="ebc-q-counter ml-auto lg:hidden">
               {questionIndex + 1} / {questionTotal}
             </div>
@@ -154,11 +198,38 @@ export function ChallengeQuestionCard({
                   {question.stem}
                 </MathText>
               </div>
+
+              <div className="ebc-ring-wrap" aria-hidden>
+                <svg className="ebc-ring-svg" width="56" height="56" viewBox="0 0 56 56">
+                  <circle className="ebc-ring-track" cx="28" cy="28" r={RING_RADIUS} />
+                  <circle
+                    className="ebc-ring-fill"
+                    cx="28"
+                    cy="28"
+                    r={RING_RADIUS}
+                    strokeDasharray={RING_CIRCUMFERENCE}
+                    strokeDashoffset={ringOffset}
+                    stroke={ringStroke}
+                  />
+                </svg>
+              </div>
+
+              <div
+                className={cn("ebc-phase-banner", phaseBannerClass)}
+                role="status"
+                aria-live="polite"
+                aria-label={`${phaseLabel}. ${phaseTimerDisplay}. ${phaseSub}`}
+              >
+                <div className="ebc-phase-sub">{phaseSub}</div>
+                <div className="ebc-phase-timer">{phaseTimerDisplay}</div>
+                <div className="ebc-phase-label">{phaseLabel}</div>
+              </div>
             </div>
 
             <div className="ebc-right-col">
               <div className="ebc-options-area mt-4">
                 {options.map((option, i) => {
+                  const showReveal = answered && revealDuringPlay;
                   const isSelected = !showReveal && selectedIndex === i;
                   const isCorrectPick =
                     showReveal && pickedIndex === i && pickedIndex === correctIndex;
@@ -200,7 +271,7 @@ export function ChallengeQuestionCard({
                 <div className="ebc-result-flash ebc-result-flash--empty" aria-hidden />
               )}
 
-              {answered && showExplanation && explanation ? (
+              {answered && showExplanation && revealDuringPlay && explanation ? (
                 <MathText as="div" className="ebc-explanation">
                   {explanation}
                 </MathText>
@@ -251,5 +322,3 @@ export function ChallengeQuestionCard({
     </div>
   );
 }
-
-

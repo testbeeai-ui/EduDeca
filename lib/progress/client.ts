@@ -1,9 +1,13 @@
 import type { EduDecaProgress } from "@/lib/progress/types";
+import { supabase } from "@/lib/supabase/client";
 
 export async function fetchServerProgress(): Promise<EduDecaProgress | null> {
   try {
     const res = await fetch("/api/progress", { method: "GET", cache: "no-store" });
-    if (res.status === 401) return null;
+    if (res.status === 401) {
+      void supabase.auth.signOut();
+      return null;
+    }
     if (!res.ok) {
       console.warn("[progress] load failed", res.status);
       return null;

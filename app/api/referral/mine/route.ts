@@ -6,7 +6,7 @@ import {
   initialsFromName,
   normalizeEduDecaReferralCode,
 } from "@/lib/referral/referral-code";
-import { createSupabaseServer } from "@/lib/supabase/server";
+import { requireApiUser } from "@/lib/supabase/require-user";
 
 type ListRow = {
   attribution_id: string;
@@ -16,13 +16,11 @@ type ListRow = {
 };
 
 export async function GET(request: Request) {
-  const supabase = await createSupabaseServer();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
+  const auth = await requireApiUser();
+  if (!auth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const { supabase } = auth;
 
   const { data: minted, error: mintError } = await supabase.rpc(
     "ensure_my_edudeca_referral_code",

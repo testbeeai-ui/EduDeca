@@ -21,13 +21,14 @@ export function defaultEduDecaProgress(): EduDecaProgress {
   };
 }
 
+/**
+ * Discipline badges follow the campaign level. Daily Challenge is one shared
+ * level across the 10-discipline lineup — per-subject levels must not drift.
+ */
 export function floorSubjectLevels(
-  levels: SubjectLevels,
+  _levels: SubjectLevels,
   campaignLevel: number,
 ): SubjectLevels {
-  const next = { ...levels };
-  for (const subjectId of Object.keys(next)) {
-    next[subjectId] = Math.min(10, Math.max(next[subjectId] ?? 1, campaignLevel));
-  }
-  return next;
+  const floor = Math.min(10, Math.max(1, Math.floor(campaignLevel) || 1));
+  return defaultSubjectLevels(floor);
 }

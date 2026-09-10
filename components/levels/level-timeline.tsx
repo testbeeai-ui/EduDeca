@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Trophy, Lock, Check } from "lucide-react";
+import { Trophy, Lock, Check, Clock } from "lucide-react";
 
 import type { LevelNode } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -15,11 +15,17 @@ function getLevelDisplayData(level: LevelNode) {
   let title = level.title;
   let subtitle = level.subtitle;
 
+  if (level.comingSoon && level.status !== "completed") {
+    subtitle = "Coming soon";
+  }
+
   if (level.status === "current") {
     title = "You are here";
-    if (level.number === 1) subtitle = "Start your first daily challenge";
-    if (level.number === 2) subtitle = "Unlock after Level 1";
-    if (level.number === 3) subtitle = "Rank, streaks & leaderboard";
+    if (!level.comingSoon) {
+      if (level.number === 1) subtitle = "Start your first daily challenge";
+      if (level.number === 2) subtitle = "Unlock after Level 1";
+      if (level.number === 3) subtitle = "Rank, streaks & leaderboard";
+    }
   } else if (level.status === "completed") {
     if (level.number === 1) title = "Foundations";
     if (level.number === 2) title = "Building up";
@@ -80,8 +86,11 @@ function LevelNodeCard({ level, index }: LevelNodeCardProps) {
           )}>
             Level {level.number} — {title}
           </p>
-          {isLocked && (
+          {isLocked && !level.comingSoon && (
             <Lock className="size-3.5 text-muted-foreground/60 shrink-0" />
+          )}
+          {level.comingSoon && level.status !== "completed" && (
+            <Clock className="size-3.5 text-amber-300/80 shrink-0" />
           )}
         </div>
         <p className="text-xs sm:text-sm text-slate-400 mt-0.5 truncate transition-colors group-hover:text-slate-300">

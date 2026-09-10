@@ -32,18 +32,37 @@ check(
 );
 
 check(
-  "full lineup established",
+  "full lineup without class is NOT established",
   isEduDecaStudentEstablished({
     classLevel: null,
+    institutionName: "",
+    disciplines: Array.from({ length: 10 }, (_, i) => `d${i}`),
+  }) === false,
+);
+
+check(
+  "xp without class is NOT established",
+  isEduDecaStudentEstablished({
+    classLevel: null,
+    institutionName: null,
+    disciplines: [],
+    xp: 50,
+  }) === false,
+);
+
+check(
+  "class + full lineup is established",
+  isEduDecaStudentEstablished({
+    classLevel: 12,
     institutionName: "",
     disciplines: Array.from({ length: 10 }, (_, i) => `d${i}`),
   }) === true,
 );
 
 check(
-  "xp established",
+  "class + xp is established",
   isEduDecaStudentEstablished({
-    classLevel: null,
+    classLevel: 11,
     institutionName: null,
     disciplines: [],
     xp: 50,

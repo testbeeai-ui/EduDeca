@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 
 import { isLineupComplete, lineupIds, lineupIdsMatch } from "@/lib/disciplines/selection";
 import { isTesterInvestorEmail } from "@/lib/admin/tester-allowlist";
 import { fetchServerProgress, patchDisciplines } from "@/lib/progress/client";
-import { EDUDECA_PENDING_REFERRER_KEY } from "@/lib/referral/referral-code";
+import {
+  EDUDECA_PENDING_REFERRER_KEY,
+  hasPendingReferralCookie,
+} from "@/lib/referral/referral-code";
 import { isEduDecaStudentEstablished } from "@/lib/signin/returning-login";
 import { syncSignupProfileFromLocal } from "@/lib/signin/sync-signup-profile";
 import { supabase } from "@/lib/supabase/client";
@@ -26,17 +29,48 @@ const STUDENT_APP_PATHS = new Set([
   "/levels",
   "/leaderboard",
   "/rewards",
+  "/mock-test",
   "/profile",
   "/challenge",
   "/signin",
 ]);
 const GET_SESSION_TIMEOUT_MS = 4000;
+const COLLEGE_GATE_TTL_MS = 5 * 60 * 1000;
+
+function collegeGateStorageKey(userId: string): string {
+  return `edudeca.collegeGate.${userId}`;
+}
+
+function readCachedCollegeGate(userId: string): CollegeGateStatus | null {
+  try {
+    const raw = sessionStorage.getItem(collegeGateStorageKey(userId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { at: number; status: CollegeGateStatus };
+    if (Date.now() - parsed.at > COLLEGE_GATE_TTL_MS) return null;
+    return parsed.status;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedCollegeGate(userId: string, status: CollegeGateStatus): void {
+  try {
+    sessionStorage.setItem(
+      collegeGateStorageKey(userId),
+      JSON.stringify({ at: Date.now(), status }),
+    );
+  } catch {
+    /* ignore quota */
+  }
+}
 
 type CollegeGateStatus = "none" | "pending" | "approved" | "rejected";
 
 async function fetchCollegeGateStatus(): Promise<CollegeGateStatus> {
   try {
-    const res = await fetch("/api/college/applications", { credentials: "include" });
+    const res = await fetch("/api/college/applications?mine=1", {
+      credentials: "include",
+    });
     if (!res.ok) return "none";
     const json = (await res.json()) as {
       application?: { status?: string } | null;
@@ -62,6 +96,14 @@ async function syncCollegeRosterBestEffort() {
   }
 }
 
+async function runSignedInBootSync() {
+  await Promise.all([
+    syncProgressFromServer(),
+    syncSignupProfileFromLocal(),
+    syncCollegeRosterBestEffort(),
+  ]);
+}
+
 function displayNameFromUser(user: User): string {
   const meta = user.user_metadata ?? {};
   const fromMeta =
@@ -74,9 +116,10 @@ function displayNameFromUser(user: User): string {
 }
 
 function applyUserToStore(user: User | null) {
-  const { signIn, signOut, isSignedIn, setStudentCode, setReferralCode } =
+  const { signIn, signOut, isSignedIn, userId, setStudentCode, setReferralCode } =
     useAppStore.getState();
   if (user) {
+    const sameUser = isSignedIn && userId === user.id;
     const meta = user.user_metadata ?? {};
     const avatarFromMeta =
       (typeof meta.avatar_url === "string" && meta.avatar_url) ||
@@ -88,6 +131,7 @@ function applyUserToStore(user: User | null) {
       email: user.email ?? null,
       phone: user.phone ?? null,
     });
+    if (sameUser) return;
     void (async () => {
       const { data } = await supabase
         .from("profiles")
@@ -113,6 +157,8 @@ function applyUserToStore(user: User | null) {
         if (typeof mintedRef === "string") referral = mintedRef;
       }
       setReferralCode(referral);
+
+      if (!hasPendingReferralCookie()) return;
 
       try {
         await fetch("/api/referral/claim", {
@@ -156,6 +202,19 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   const isSignedIn = useAppStore((s) => s.isSignedIn);
   const hasHydrated = useAppStore((s) => s.hasHydrated);
   const setHasHydrated = useAppStore((s) => s.setHasHydrated);
+  const bootSyncInFlight = useRef(false);
+  const bootedUserId = useRef<string | null>(null);
+  const collegeStatusRef = useRef<{
+    userId: string;
+    status: CollegeGateStatus;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!isSignedIn) {
+      collegeStatusRef.current = null;
+      bootedUserId.current = null;
+    }
+  }, [isSignedIn]);
 
   useEffect(() => {
     let mounted = true;
@@ -163,6 +222,18 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     const finish = () => {
       if (!mounted) return;
       setHasHydrated(true);
+    };
+
+    const bootIfSignedIn = async (user: { id: string } | null | undefined) => {
+      if (!user) return;
+      if (bootedUserId.current === user.id || bootSyncInFlight.current) return;
+      bootSyncInFlight.current = true;
+      bootedUserId.current = user.id;
+      try {
+        await runSignedInBootSync();
+      } finally {
+        bootSyncInFlight.current = false;
+      }
     };
 
     const timeoutId = window.setTimeout(() => {
@@ -177,11 +248,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
         if (!mounted) return;
         if (error) console.error("[auth] getSession", error);
         applyUserToStore(data.session?.user ?? null);
-        if (data.session?.user) {
-          await syncProgressFromServer();
-          await syncSignupProfileFromLocal();
-          await syncCollegeRosterBestEffort();
-        }
+        await bootIfSignedIn(data.session?.user);
         finish();
       })
       .catch((err) => {
@@ -195,14 +262,17 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "TOKEN_REFRESHED") return;
+      if (event === "SIGNED_OUT") {
+        bootedUserId.current = null;
+        applyUserToStore(null);
+        finish();
+        return;
+      }
       applyUserToStore(session?.user ?? null);
       if (session?.user) {
-        void (async () => {
-          await syncProgressFromServer();
-          await syncSignupProfileFromLocal();
-          await syncCollegeRosterBestEffort();
-        })();
+        void bootIfSignedIn(session.user);
       }
       finish();
     });
@@ -231,9 +301,30 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
     let cancelled = false;
     const email = useAppStore.getState().email;
+    const userId = useAppStore.getState().userId;
+    const onCollegeRoute =
+      pathname.startsWith("/college") || pathname.startsWith("/admin");
 
     void (async () => {
-      const collegeStatus = await fetchCollegeGateStatus();
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (cancelled || !sessionData.session) return;
+
+      let collegeStatus: CollegeGateStatus | null =
+        userId &&
+        collegeStatusRef.current?.userId === userId &&
+        !onCollegeRoute
+          ? collegeStatusRef.current.status
+          : null;
+      if (collegeStatus == null) {
+        const cached = userId ? readCachedCollegeGate(userId) : null;
+        if (cached) {
+          collegeStatus = cached;
+        } else {
+          collegeStatus = await fetchCollegeGateStatus();
+          if (userId) writeCachedCollegeGate(userId, collegeStatus);
+        }
+        if (userId) collegeStatusRef.current = { userId, status: collegeStatus };
+      }
       if (cancelled) return;
 
       // Testers keep Profile access so they can verify colleges.
