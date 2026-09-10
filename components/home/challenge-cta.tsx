@@ -44,6 +44,7 @@ export function ChallengeCTA({ className }: ChallengeCTAProps) {
   const isSignedIn = useAppStore((s) => s.isSignedIn);
   const email = useAppStore((s) => s.email);
   const campaignLevel = useAppStore((s) => s.campaignLevel);
+  const freeZoneComplete = useAppStore((s) => s.freeZoneComplete);
   const todayCompleted = useAppStore((s) => s.todayCompleted);
   const skipDailyWait = useAppStore((s) => s.skipDailyWait);
   const hydrateProgress = useAppStore((s) => s.hydrateProgress);
@@ -51,7 +52,8 @@ export function ChallengeCTA({ className }: ChallengeCTAProps) {
   const availability = useQuestionAvailability();
   const { trials } = useLevelTrials(isSignedIn && !isTesterInvestorEmail(email));
   const isTester = isTesterInvestorEmail(email);
-  const level4Unlock = isSignedIn && shouldShowLevel4UnlockCta(campaignLevel);
+  const level4Unlock =
+    isSignedIn && shouldShowLevel4UnlockCta(campaignLevel, freeZoneComplete);
   const bankReady = isLevelReady(availability, campaignLevel);
   // Level 4 uses the unlock CTA, never the plain coming-soon dead state.
   const comingSoon =

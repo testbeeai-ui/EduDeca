@@ -28,13 +28,15 @@ export function StartChallengeControl({
   const isSignedIn = useAppStore((s) => s.isSignedIn);
   const email = useAppStore((s) => s.email);
   const campaignLevel = useAppStore((s) => s.campaignLevel);
+  const freeZoneComplete = useAppStore((s) => s.freeZoneComplete);
   const availability = useQuestionAvailability();
   const { trials } = useLevelTrials(isSignedIn && !isTesterInvestorEmail(email));
   const ready = isLevelReady(availability, campaignLevel);
   const href = isSignedIn ? "/challenge" : "/signin";
   const text = label ?? `Start Level ${campaignLevel} Challenge →`;
   const exhausted = isSignedIn && trials?.gate === "trials_exhausted";
-  const level4Unlock = isSignedIn && shouldShowLevel4UnlockCta(campaignLevel);
+  const level4Unlock =
+    isSignedIn && shouldShowLevel4UnlockCta(campaignLevel, freeZoneComplete);
 
   if (level4Unlock) {
     return (

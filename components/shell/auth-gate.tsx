@@ -85,8 +85,23 @@ async function fetchCollegeGateStatus(): Promise<CollegeGateStatus> {
   }
 }
 
+async function syncCollegeRosterBestEffort() {
+  try {
+    await fetch("/api/college/roster/sync", {
+      method: "POST",
+      credentials: "include",
+    });
+  } catch {
+    /* best-effort */
+  }
+}
+
 async function runSignedInBootSync() {
-  await Promise.all([syncProgressFromServer(), syncSignupProfileFromLocal()]);
+  await Promise.all([
+    syncProgressFromServer(),
+    syncSignupProfileFromLocal(),
+    syncCollegeRosterBestEffort(),
+  ]);
 }
 
 function displayNameFromUser(user: User): string {

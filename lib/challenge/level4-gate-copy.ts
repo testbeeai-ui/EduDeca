@@ -30,11 +30,16 @@ export const LEVEL4_WAIT_BODY =
 
 export const LEVEL4_ADMIN_PREVIEW = "Admin · Preview Level 4";
 
-export function isLevel4Campaign(level: number): boolean {
-  return Math.floor(level) === 4;
+export function isLevel4Campaign(level: number, freeZoneComplete = false): boolean {
+  const floor = Math.floor(level);
+  // Completing Level 3 sets freeZoneComplete and leaves campaignLevel at 3.
+  return floor === 4 || (freeZoneComplete && floor === 3);
 }
 
 /** Home/start controls: Level 4 never uses the plain coming-soon dead state. */
-export function shouldShowLevel4UnlockCta(campaignLevel: number): boolean {
-  return isLevel4Campaign(campaignLevel);
+export function shouldShowLevel4UnlockCta(
+  campaignLevel: number,
+  freeZoneComplete = false,
+): boolean {
+  return isLevel4Campaign(campaignLevel, freeZoneComplete);
 }

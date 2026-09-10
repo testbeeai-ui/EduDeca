@@ -27,6 +27,7 @@ export default function ChallengePage() {
   const router = useRouter();
   const email = useAppStore((s) => s.email);
   const campaignLevel = useAppStore((s) => s.campaignLevel);
+  const freeZoneComplete = useAppStore((s) => s.freeZoneComplete);
   const todayCompleted = useAppStore((s) => s.todayCompleted);
   const applyChallengeResult = useAppStore((s) => s.applyChallengeResult);
   const hydrateProgress = useAppStore((s) => s.hydrateProgress);
@@ -42,7 +43,8 @@ export default function ChallengePage() {
   const { trials, loading: trialsLoading } = useLevelTrials(true);
   const antiCaptureEnabled =
     runLevel >= 4 && (isAdmin ? antiCapturePreference : true);
-  const showLevel4Gate = isLevel4Campaign(runLevel) && !(isAdmin && adminPreview);
+  const showLevel4Gate =
+    isLevel4Campaign(runLevel, freeZoneComplete) && !(isAdmin && adminPreview);
   const completedToday = todayCompleted && !showLevel4Gate && !isAdmin;
   const maxStrikes = challengeMaxStrikes(runLevel);
   const questionCount = challengeQuestionCount(runLevel);
